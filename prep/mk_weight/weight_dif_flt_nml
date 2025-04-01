@@ -1,0 +1,24 @@
+!------------------------------------------------------------
+! Diffusive Filter namelist
+!------------------------------------------------------------
+!
+!  nt      = number of iteration for the diffusion filter (should be the same of the one used for the computation of the weights)
+!  rd_corr = read correlation radius from file
+!  rx      = correlation radius in x  ( if not read from file )
+!  ry      = correlation radius in y  ( if not read from file )
+!  use_bc  = use boundary conditions
+!  bc_type = type of boundary condition (if use_bc = .T. then choose NEUMANN/DIRICHLET)
+!  use_cst = use coastal distance to reduce the correlation radius 
+!  cst_dis = costal distance value ( if use_cst = .T. )
+!
+!------------------------------------------------------------
+&dflst
+nt = 20
+rd_corr = .F.
+rx = 60000.0
+ry = 60000.0
+use_bc = .T.
+bc_type = 'NEUMANN' !'DIRICHLET'
+use_cst = .T.
+cst_dst = 30000
+/

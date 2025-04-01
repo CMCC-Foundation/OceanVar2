@@ -1,25 +1,59 @@
 #!/bin/sh
 
+#!======================================================================
+#!
+#! This file is part of Oceanvar.
+#!
+#!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+#!
+#! This program is free software: you can redistribute it and/or modify
+#! it under the terms of the GNU General Public License as published by
+#! the Free Software Foundation, either version 3 of the License, or
+#! any later version (GPL-3.0-or-later).
+#!
+#! This program is distributed in the hope that it will be useful,
+#! but WITHOUT ANY WARRANTY; without even the implied warranty of
+#! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#! GNU General Public License for more details.
+#!
+#! You should have received a copy of the GNU General Public License
+#! along with this program. If not, see <https://www.gnu.org/licenses/>.
+#!======================================================================
+
+mkdir ../work
+
 cd ../work
 
 LN="ln -fs"
 RM="rm"
 
-$RM Makefile ini_itr.F90 sav_itr.F90 drv_str.F90 cns_str.F90 cnv_ctv.F90 cnv_ctv_ad.F90 cnv_inn.F90 costf.F90 \
+$RM Makefile configuration.mk ini_itr.F90 sav_itr.F90 drv_str.F90 cns_str.F90 cnv_ctv.F90 cnv_ctv_ad.F90 cnv_inn.F90 costf.F90 \
 ctl_str.F90 def_cov.F90 def_coef.F90 def_coef_bc.F90 def_grd.F90 def_nml.F90 eof_str.F90 int_par.F90 \
 int_obs_hor.F90 get_obs.F90 get_obs_arg.F90 get_obs_sla.F90 get_obs_xbt.F90 get_obs_gld.F90 grd_str.F90 \
 get_obs_sst.F90 obs_sst.F90 obs_sst_ad.F90 rdmxd.F90 def_loc.F90 \
 ini_cfn.F90 ini_nrm.F90 min_cfn.F90 obs_arg.F90 obs_arg_ad.F90 obs_sla.F90 obs_sla_ad.F90 obs_str.F90 \
-obs_xbt.F90 obs_xbt_ad.F90 obs_gld.F90 obs_gld_ad.F90 obsop.F90 obsop_ad.F90 rcfl_1.F90 rcfl_1_ad.F90 \
+obs_xbt.F90 obs_xbt_ad.F90 obs_gld.F90 obs_gld_ad.F90 obsop.F90 obsop_ad.F90 \
 rcfl_2.F90 rcfl_2_ad.F90 rcfl_x.F90 rcfl_x_ad.F90 rcfl_y.F90 rcfl_y_ad.F90 rdgrd.F90 rdeofs.F90 res_inc.F90 \
 resid.F90 routines.F set_knd.F90 oceanvar.F90 veof.F90 veof_ad.F90 ver_hor.F90 ver_hor_ad.F90 wrt_dia.F90 \
+wrt_sla.F90 wrt_arg.F90 wrt_xbt.F90 wrt_gld.F90 wrt_sst.F90 \
 obs_vec.F90 bar_mod.F90 bmd_str.F90 get_byg.F90 get_byg_ad.F90 ini_bmd.F90 invrt.F90 bar_mod_ad.F90 invrt_ad.F90 \
 get_vel.F90 get_vel_ad.F90 div_dmp.F90 div_dmp_ad.F90 get_obs_tra.F90 obs_tra.F90 obs_tra_ad.F90 get_obs_trd.F90 \
 obs_trd.F90 obs_trd_ad.F90 mod_trj_ad.F90 mod_trj_tl.F90 get_obs_vdr.F90 obs_vdr.F90 obs_vdr_ad.F90 \
 get_obs_gvl.F90 obs_gvl.F90 obs_gvl_ad.F90 netcdf_err.F90 mpi_str.F90 def_mpid.F90 exc_mpi.F90 sav_msf.F90 \
-mod_msf.F90 mod_inc.F90
+bal_str.F90 ini_bal.F90 bal_op.F90 bal_op_ad.F90 oceantools.F90 rdeos.F90 \
+adjck_str.F90 adjck_balop.F90 adjck_bmd.F90 adjck_byg.F90 adjck_dfl.F90 \
+obserrors.F90 obserr_arg.F90 obserr_gld.F90 obserr_gvl.F90 obserr_sla.F90  \
+obserr_sst.F90 obserr_tra.F90 obserr_trd.F90 obserr_vdr.F90 obserr_xbt.F90 \
+datetime_module.F90 ini_time.F90 ini_huber.F90 huber_costf.F90 \
+rdclim.F90 get_bgerr.F90 qualitycheck.F90 thinning.F90 \
+qc_arg.F90 qc_gld.F90 qc_gvl.F90 qc_sla.F90 qc_sst.F90 qc_tra.F90 qc_trd.F90 qc_vdr.F90 qc_xbt.F90 \
+thin_arg.F90 thin_gld.F90 thin_gvl.F90 thin_sla.F90 thin_sst.F90 thin_tra.F90 thin_trd.F90 thin_vdr.F90 thin_xbt.F90 \
+recursive_filter_ad.F90 recursive_filter.F90 ini_rcfl.F90 dfl_str.F90 ini_dflt.F90 rdwgh.F90 rdcrl.F90 \
+diffusive_filter.F90 diffusive_filter_ad.F90 \
+mod_msf.F90 mod_inc.F90 rpr_str.F90 2>/dev/null
 
 $LN ../src/Makefile Makefile
+$LN ../src/configuration.mk configuration.mk
 $LN ../src/structures/set_knd.F90 set_knd.F90
 $LN ../src/structures/drv_str.F90 drv_str.F90
 $LN ../src/structures/cns_str.F90 cns_str.F90
@@ -27,6 +61,8 @@ $LN ../src/structures/ctl_str.F90 ctl_str.F90
 $LN ../src/structures/eof_str.F90 eof_str.F90
 $LN ../src/structures/grd_str.F90 grd_str.F90
 $LN ../src/structures/obs_str.F90 obs_str.F90
+$LN ../src/structures/dfl_str.F90 dfl_str.F90
+$LN ../src/structures/adjck_str.F90 adjck_str.F90
 $LN ../src/observations/get_obs.F90 get_obs.F90
 $LN ../src/observations/get_obs_arg.F90 get_obs_arg.F90
 $LN ../src/observations/get_obs_sla.F90 get_obs_sla.F90
@@ -35,11 +71,46 @@ $LN ../src/observations/get_obs_gld.F90 get_obs_gld.F90
 $LN ../src/observations/get_obs_vdr.F90 get_obs_vdr.F90
 $LN ../src/observations/get_obs_gvl.F90 get_obs_gvl.F90
 $LN ../src/observations/get_obs_sst.F90 get_obs_sst.F90
+$LN ../src/error_bg_obs/obserrors.F90 obserrors.F90
+$LN ../src/error_bg_obs/obserr_arg.F90 obserr_arg.F90
+$LN ../src/error_bg_obs/obserr_gld.F90 obserr_gld.F90
+$LN ../src/error_bg_obs/obserr_gvl.F90 obserr_gvl.F90
+$LN ../src/error_bg_obs/obserr_sla.F90 obserr_sla.F90
+$LN ../src/error_bg_obs/obserr_sst.F90 obserr_sst.F90
+$LN ../src/error_bg_obs/obserr_tra.F90 obserr_tra.F90
+$LN ../src/error_bg_obs/obserr_trd.F90 obserr_trd.F90
+$LN ../src/error_bg_obs/obserr_vdr.F90 obserr_vdr.F90
+$LN ../src/error_bg_obs/obserr_xbt.F90 obserr_xbt.F90
+$LN ../src/error_bg_obs/get_bgerr.F90 get_bgerr.F90
+$LN ../src/qualitycontrol/qualitycheck.F90 qualitycheck.F90
+$LN ../src/qualitycontrol/qc_arg.F90 qc_arg.F90
+$LN ../src/qualitycontrol/qc_gld.F90 qc_gld.F90
+$LN ../src/qualitycontrol/qc_gvl.F90 qc_gvl.F90
+$LN ../src/qualitycontrol/qc_sla.F90 qc_sla.F90
+$LN ../src/qualitycontrol/qc_sst.F90 qc_sst.F90
+$LN ../src/qualitycontrol/qc_tra.F90 qc_tra.F90
+$LN ../src/qualitycontrol/qc_trd.F90 qc_trd.F90
+$LN ../src/qualitycontrol/qc_vdr.F90 qc_vdr.F90
+$LN ../src/qualitycontrol/qc_xbt.F90 qc_xbt.F90
+$LN ../src/thinning/thinning.F90 thinning.F90
+$LN ../src/thinning/thin_arg.F90 thin_arg.F90
+$LN ../src/thinning/thin_gld.F90 thin_gld.F90
+$LN ../src/thinning/thin_gvl.F90 thin_gvl.F90
+$LN ../src/thinning/thin_sla.F90 thin_sla.F90
+$LN ../src/thinning/thin_sst.F90 thin_sst.F90
+$LN ../src/thinning/thin_tra.F90 thin_tra.F90
+$LN ../src/thinning/thin_trd.F90 thin_trd.F90
+$LN ../src/thinning/thin_vdr.F90 thin_vdr.F90
+$LN ../src/thinning/thin_xbt.F90 thin_xbt.F90
 $LN ../src/observations/int_par.F90 int_par.F90
 $LN ../src/observations/obs_vec.F90 obs_vec.F90
 $LN ../src/observations/get_obs_tra.F90 get_obs_tra.F90
 $LN ../src/observations/get_obs_trd.F90 get_obs_trd.F90
 $LN ../src/observations/int_obs_hor.F90 int_obs_hor.F90
+$LN ../src/initialise/ini_rcfl.F90 ini_rcfl.F90
+$LN ../src/initialise/datetime_module.F90 datetime_module.F90
+$LN ../src/initialise/ini_time.F90  ini_time.F90
+$LN ../src/initialise/ini_huber.F90 ini_huber.F90
 $LN ../src/initialise/netcdf_err.F90 netcdf_err.F90
 $LN ../src/initialise/def_cov.F90 def_cov.F90
 $LN ../src/initialise/def_coef.F90 def_coef.F90
@@ -47,11 +118,17 @@ $LN ../src/initialise/def_coef_bc.F90 def_coef_bc.F90
 $LN ../src/initialise/def_grd.F90 def_grd.F90
 $LN ../src/initialise/def_nml.F90 def_nml.F90
 $LN ../src/initialise/ini_cfn.F90 ini_cfn.F90
+$LN ../src/initialise/ini_dflt.F90 ini_dflt.F90
 $LN ../src/initialise/rdgrd.F90 rdgrd.F90
 $LN ../src/initialise/rdeofs.F90 rdeofs.F90
+$LN ../src/initialise/rdclim.F90 rdclim.F90
+$LN ../src/initialise/rdwgh.F90 rdwgh.F90
+$LN ../src/initialise/rdcrl.F90 rdcrl.F90
+$LN ../src/initialise/rdeos.F90 rdeos.F90
 $LN ../src/initialise/ini_itr.F90 ini_itr.F90
 $LN ../src/initialise/rdmxd.F90 rdmxd.F90
 $LN ../src/initialise/def_loc.F90 def_loc.F90
+$LN ../src/minimize/huber_costf.F90 huber_costf.F90
 $LN ../src/minimize/costf.F90 costf.F90
 $LN ../src/minimize/min_cfn.F90 min_cfn.F90
 $LN ../src/minimize/res_inc.F90 res_inc.F90
@@ -81,11 +158,18 @@ $LN ../src/obs_operator/obsop_ad.F90 obsop_ad.F90
 $LN ../src/postproc/cnv_inn.F90 cnv_inn.F90
 $LN ../src/postproc/sav_itr.F90 sav_itr.F90
 $LN ../src/postproc/wrt_dia.F90 wrt_dia.F90
+$LN ../src/postproc/wrt_sla.F90 wrt_sla.F90
+$LN ../src/postproc/wrt_arg.F90 wrt_arg.F90
+$LN ../src/postproc/wrt_xbt.F90 wrt_xbt.F90
+$LN ../src/postproc/wrt_gld.F90 wrt_gld.F90
+$LN ../src/postproc/wrt_sst.F90 wrt_sst.F90
 $LN ../src/postproc/mod_inc.F90 mod_inc.F90
 $LN ../src/transformation/cnv_ctv.F90 cnv_ctv.F90
 $LN ../src/transformation/cnv_ctv_ad.F90 cnv_ctv_ad.F90
-$LN ../src/transformation/rcfl_1.F90 rcfl_1.F90
-$LN ../src/transformation/rcfl_1_ad.F90 rcfl_1_ad.F90
+$LN ../src/transformation/recursive_filter.F90 recursive_filter.F90
+$LN ../src/transformation/recursive_filter_ad.F90 recursive_filter_ad.F90
+$LN ../src/transformation/diffusive_filter.F90 diffusive_filter.F90
+$LN ../src/transformation/diffusive_filter_ad.F90 diffusive_filter_ad.F90
 $LN ../src/transformation/rcfl_2.F90 rcfl_2.F90
 $LN ../src/transformation/rcfl_2_ad.F90 rcfl_2_ad.F90
 $LN ../src/transformation/rcfl_x.F90 rcfl_x.F90
@@ -100,15 +184,20 @@ $LN ../src/transformation/get_vel.F90 get_vel.F90
 $LN ../src/transformation/div_dmp.F90 div_dmp.F90
 $LN ../src/transformation/get_vel_ad.F90 get_vel_ad.F90
 $LN ../src/transformation/div_dmp_ad.F90 div_dmp_ad.F90
+$LN ../src/transformation/get_byg.F90 get_byg.F90
+$LN ../src/transformation/get_byg_ad.F90 get_byg_ad.F90
 $LN ../src/oceanvar.F90 oceanvar.F90
+$LN ../src/oceantools.F90 oceantools.F90
 $LN ../src/barmod/bar_mod.F90 bar_mod.F90
 $LN ../src/barmod/bmd_str.F90 bmd_str.F90
-$LN ../src/barmod/get_byg.F90 get_byg.F90
-$LN ../src/barmod/get_byg_ad.F90 get_byg_ad.F90
 $LN ../src/barmod/ini_bmd.F90 ini_bmd.F90
 $LN ../src/barmod/invrt.F90 invrt.F90
-$LN ../src/barmod/bar_mod_ad.F90 bar_mod_ad.F90
 $LN ../src/barmod/invrt_ad.F90 invrt_ad.F90
+$LN ../src/barmod/bar_mod_ad.F90 bar_mod_ad.F90
+$LN ../src/balance/bal_str.F90 bal_str.F90
+$LN ../src/balance/ini_bal.F90 ini_bal.F90
+$LN ../src/balance/bal_op.F90 bal_op.F90
+$LN ../src/balance/bal_op_ad.F90 bal_op_ad.F90
 $LN ../src/trjmodel/mod_trj_tl.F90 mod_trj_tl.F90
 $LN ../src/trjmodel/mod_trj_ad.F90 mod_trj_ad.F90
 $LN ../src/mpi/mpi_str.F90 mpi_str.F90
@@ -116,3 +205,9 @@ $LN ../src/mpi/def_mpid.F90 def_mpid.F90
 $LN ../src/mpi/exc_mpi.F90 exc_mpi.F90
 $LN ../src/observations/sav_msf.F90 sav_msf.F90
 $LN ../src/observations/mod_msf.F90 mod_msf.F90
+$LN ../src/adjoint_check/adjck_balop.F90 adjck_balop.F90
+$LN ../src/adjoint_check/adjck_bmd.F90 adjck_bmd.F90
+$LN ../src/adjoint_check/adjck_byg.F90 adjck_byg.F90
+$LN ../src/adjoint_check/adjck_dfl.F90 adjck_dfl.F90
+$LN ../src/structures/rpr_str.F90 rpr_str.F90
+$LN ../src/initialise/seqmin.F90

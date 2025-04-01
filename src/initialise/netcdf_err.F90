@@ -1,37 +1,49 @@
-subroutine netcdf_err(errcode)
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
+!-----------------------------------------------------------------------
+!                                                                      !
+!> NetCDF error routine                                         
+!!
+!! INTEL    calls tracebackqq
+!! GFORTRAN calls backtrace
+!!
+!                                                                      !
+!-----------------------------------------------------------------------
+SUBROUTINE netcdf_err(errcode)
 
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2006 Srdjan Dobricic, CMCC, Bologna                         !
-!                                                                          !
-!    This file is part of OceanVar.                                          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.       !
-!                                                                          !
-!---------------------------------------------------------------------------
+   USE set_knd
+   USE netcdf
 
-  use set_knd
-  use netcdf
+   IMPLICIT NONE
 
-  implicit none
+   INTEGER(i4), INTENT(in) :: errcode
 
-  INTEGER(i4), intent(in) :: errcode
+   IF (errcode /= NF90_NOERR) THEN
+      print*,'Netcdf Error: ', TRIM(nf90_strerror(errcode))
+#ifdef INTEL
+      CALL tracebackqq    ! This is for intel
+#else
+      CALL backtrace       ! This is for gfortran
+#endif
+      stop "Stopped"
+   ENDIF
 
-  if(errcode /= nf90_noerr) then
-     print*,'Netcdf Error: ', trim(nf90_strerror(errcode))
-     stop "Stopped"
-  endif
-
-end subroutine netcdf_err
+END SUBROUTINE netcdf_err
 

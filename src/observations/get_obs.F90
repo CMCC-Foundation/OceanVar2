@@ -1,74 +1,72 @@
-subroutine get_obs
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2006 Srdjan Dobricic, CMCC, Bologna                         !
-!                                                                          !
-!    This file is part of OceanVar.                                        !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Load observations                                                    !
+!> Load observations                                                   
+!!
+!!
+!!
 !                                                                      !
-! Version 1: S.Dobricic 2006                                           !
+! Version 1: Srdjan Dobricic 2006                                      !
 !-----------------------------------------------------------------------
+SUBROUTINE get_obs
 
+   USE set_knd
+   USE obs_str
 
- use set_knd
- use obs_str
-
- implicit none
-
+   IMPLICIT NONE
 
 ! ----
 ! Load SLA observations
-  call get_obs_sla
+   CALL get_obs_sla
 
 ! ----
 ! Load ARGO observations
-  call get_obs_arg
+   CALL get_obs_arg
 
 ! ----
 ! Load XBT observations
-  call get_obs_xbt
+   CALL get_obs_xbt
 
 ! ----
 ! Load glider observations
-  call get_obs_gld
+   CALL get_obs_gld
 
 ! ----
 ! Load Argo trajectory observations
-  call get_obs_tra
+   CALL get_obs_tra
 
 ! ----
 ! Load trajectory observations of surface drifters
-  call get_obs_trd
+   CALL get_obs_trd
 
 ! ----
 ! Load observations of velocity by drifters
-  call get_obs_vdr
+   CALL get_obs_vdr
 
 ! ----
 ! Load observations of velocity by drifters
-  call get_obs_gvl
+   CALL get_obs_gvl
 
 ! ----
 ! Load observations of SST
-  call get_obs_sst
+   CALL get_obs_sst
 
-end subroutine get_obs
+END SUBROUTINE get_obs

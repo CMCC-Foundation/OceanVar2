@@ -1,213 +1,194 @@
-subroutine get_obs_trd
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2007 Srdjan Dobricic, CMCC, Bologna, and                    !
-!                   Vincent Taillandier, Locean, Paris                     !
-!                                                                          !
-!    This file is part of OceanVar.                                        !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Load trajectory observations by surface drifters                     !
+!> Load trajectory observations by surface drifters                     
+!!
+!!
+!!
 !                                                                      !
-! Version 1: S.Dobricic 2007                                           !
+! Version 1: Srdjan Dobricic and Vincent Taillandier 2007              !
 !-----------------------------------------------------------------------
+SUBROUTINE get_obs_trd
 
- use set_knd
- use drv_str
- use grd_str
- use obs_str
- use mpi_str
+   USE set_knd
+   USE drv_str
+   USE grd_str
+   USE obs_str, ONLY : trd,  obs
+   USE mpi_str
 
- implicit none
+   IMPLICIT NONE
 
-  INTEGER(i4)   ::  k, ierr
-  INTEGER(i4)   ::  i1, j1, i, j
-
+   INTEGER(i4)   ::  k, ierr
+   INTEGER(i4)   ::  i1, j1, i, j
 
    trd%no = 0
    trd%nc = 0
    trd%ncs = 0
    trd%ncc = 0
 
+   OPEN (511,FILE=drv%inpdir//'/trd_obs.dat',FORM='unformatted',STATUS='old',ERR=1111)
 
-   
+   READ(511) trd%no, trd%nc, trd%nt, trd%im, trd%jm, trd%km, trd%dpt
 
-    open(511,file='trd_obs.dat',form='unformatted',status='old',err=1111)
+   WRITE (drv%dia,*) 'Number of trajectory observations by surface drifters: ',  trd%no
 
-    read(511) trd%no, trd%nc, trd%nt, trd%im, trd%jm, trd%km, trd%dpt
+   IF ( trd%no .EQ. 0 ) THEN
+      CLOSE (511)
+      RETURN
+   ENDIF
 
 ! ---
-! Allocate memory for observations 
+! Allocate memory for observations
+   ALLOCATE ( trd%ino(trd%no), trd%flg(trd%no), trd%flc(trd%no) )
+   ALLOCATE ( trd%loi(trd%no), trd%lai(trd%no), trd%tim(trd%no), trd%dtm(trd%no) )
+   ALLOCATE ( trd%lof(trd%no), trd%laf(trd%no) )
+   ALLOCATE ( trd%err(trd%no) )
+   ALLOCATE ( trd%lob(trd%nt+1,trd%no), trd%lab(trd%nt+1,trd%no) )
+   ALLOCATE ( trd%loa(trd%no), trd%laa(trd%no) )
+   ALLOCATE ( trd%xob(trd%no), trd%xmn(trd%nt+1,trd%no), trd%erx(trd%no) )
+   ALLOCATE ( trd%yob(trd%no), trd%ymn(trd%nt+1,trd%no), trd%ery(trd%no) )
+   ALLOCATE ( trd%rex(trd%no), trd%inx(trd%no) )
+   ALLOCATE ( trd%rey(trd%no), trd%iny(trd%no) )
+   ALLOCATE ( trd%xtl(trd%no), trd%ytl(trd%no) )
+   ALLOCATE ( trd%xtl_ad(trd%no), trd%ytl_ad(trd%no) )
+   ALLOCATE ( trd%fls(trd%no) )
+   ALLOCATE ( trd%rsx(trd%no) )
+   ALLOCATE ( trd%rsy(trd%no) )
+   ALLOCATE ( trd%isx(trd%no) )
+   ALLOCATE ( trd%isy(trd%no), trd%eve(trd%no) )
 
-   write(drv%dia,*) 'Number of trajectory observations by surface drifters: ',  trd%no
+   trd%fls(:) = 0_i8
+   trd%rsx(:) = 0.0_r8
+   trd%isx(:) = 0.0_r8
+   trd%rsy(:) = 0.0_r8
+   trd%isy(:) = 0.0_r8
+   trd%eve(:) = 999_i8
 
-
-   if(trd%no.eq.0)then
-      close(511)
-      return
-   endif
-
-   allocate ( trd%ino(trd%no), trd%flg(trd%no), trd%flc(trd%no))
-   allocate ( trd%loi(trd%no), trd%lai(trd%no), trd%tim(trd%no), trd%dtm(trd%no))
-   allocate ( trd%lof(trd%no), trd%laf(trd%no))
-   allocate ( trd%err(trd%no))
-   allocate ( trd%lob(trd%nt+1,trd%no), trd%lab(trd%nt+1,trd%no) )
-   allocate ( trd%loa(trd%no), trd%laa(trd%no) )
-   allocate ( trd%xob(trd%no), trd%xmn(trd%nt+1,trd%no), trd%erx(trd%no) )
-   allocate ( trd%yob(trd%no), trd%ymn(trd%nt+1,trd%no), trd%ery(trd%no) )
-
-   allocate ( trd%rex(trd%no), trd%inx(trd%no))
-   allocate ( trd%rey(trd%no), trd%iny(trd%no))
-   allocate ( trd%xtl(trd%no), trd%ytl(trd%no) )
-   allocate ( trd%xtl_ad(trd%no), trd%ytl_ad(trd%no) )
-   allocate ( trd%fls(trd%no))
-   allocate ( trd%rsx(trd%no))
-   allocate ( trd%rsy(trd%no))
-   allocate ( trd%isx(trd%no))
-   allocate ( trd%isy(trd%no))
-
-   trd%fls(:) = 0.0
-   trd%rsx(:) = 0.0
-   trd%isx(:) = 0.0
-   trd%rsy(:) = 0.0
-   trd%isy(:) = 0.0
-
-
-   read(511)  trd%ino, trd%flg, trd%tim, trd%dtm,      &
+   READ(511)  trd%ino, trd%flg, trd%tim, trd%dtm,      &
               trd%loi, trd%lai, trd%lof, trd%laf,      &
               trd%err, trd%lob, trd%lab,               &
               trd%xob, trd%xmn, trd%erx,               &
               trd%yob, trd%ymn, trd%ery
-
-   close(511)
+   CLOSE (511)
 
 ! ---
 ! Initialise quality flag
-   if(obs%trd.eq.0)then
-    do j=1,trd%no
-     if(trd%flg(j).ne.0)trd%flg(j)=-1
-    enddo
-   endif
+   IF ( obs%trd .EQ. 0 ) THEN
+      DO j = 1,trd%no
+         IF ( trd%flg(j) .NE. 0 )trd%flg(j)=-1
+      ENDDO
+      WRITE (drv%dia,*)'Bad quality flag ',obs%trd
+   ENDIF
    trd%flc(:) = trd%flg(:)
 
-    do j=1,trd%no
-     trd%rex(j) = trd%xob(j) - trd%xmn(trd%nt+1,j)
-     trd%rey(j) = trd%yob(j) - trd%ymn(trd%nt+1,j)
-     trd%loa(j) = trd%lob(trd%nt+1,j)
-     trd%laa(j) = trd%lab(trd%nt+1,j)
-    enddo
-
-
-! residual check
-  do j=1,trd%no
-   if(abs(trd%rex(j)).gt.10. .or. abs(trd%rey(j)).gt.10.) trd%flg(j) = 0
-  enddo
-
+   DO j = 1,trd%no
+      trd%rex(j) = trd%xob(j) - trd%xmn(trd%nt+1,j)
+      trd%rey(j) = trd%yob(j) - trd%ymn(trd%nt+1,j)
+      trd%loa(j) = trd%lob(trd%nt+1,j)
+      trd%laa(j) = trd%lab(trd%nt+1,j)
+   ENDDO
 
 ! ---
 ! Set quality flags to zero on all processors except the first one
-
-  if(mpi%myrank.gt.0) trd%flg(:) = 0
-
+   IF ( mpi%myrank .GT. 0 ) trd%flg(:) = 0
 
 ! ---
 ! Count good observations
-    trd%nc = 0
-  do k=1,trd%no
-   if(trd%flg(k).eq.1)then
-    trd%nc = trd%nc + 1
-   endif
-  enddo
+   trd%nc = 0
+   DO k = 1,trd%no
+      IF ( trd%flg(k) .EQ. 1 ) THEN
+         trd%nc = trd%nc + 1
+      ENDIF
+   ENDDO
 
-  trd%flc(:) = trd%flg(:)
+   trd%flc(:) = trd%flg(:)
+   WHERE ( trd%flc .EQ. 0 ) trd%eve = 1
 
-  trd%ncc = trd%nc
+   trd%ncc = trd%nc
 
- write(drv%dia,*) 'Number of good drifter observations: ',  tra%nc
+   WRITE (drv%dia,*) 'Number of good drifter observations after reading: ',  trd%nc
 
-  if(mpi%nproc.gt.1) call mpi_bcast( trd%ncc, 1, mpi%i8, 0, mpi%comm, ierr)
+   IF ( mpi%nproc .GT. 1 ) CALL mpi_bcast( trd%ncc, 1, mpi%i8, 0, mpi%comm, ierr)
 
-1111 continue
+1111 CONTINUE
 
-   
-
-end subroutine get_obs_trd
-
-subroutine int_par_trd
-
+END SUBROUTINE get_obs_trd
 !-----------------------------------------------------------------------
 !                                                                      !
-! Get interpolation parameters for a grid                              !
+!> Get interpolation parameters for a grid                              
 !                                                                      !
-! Version 1: S.Dobricic 2006                                           !
+! Version 1: Srdjan Dobricic 2006                                      !
 !-----------------------------------------------------------------------
+SUBROUTINE int_par_trd
 
- use set_knd
- use grd_str
- use obs_str
- use mpi_str
+   USE set_knd
+   USE drv_str
+   USE grd_str
+   USE obs_str
+   USE mpi_str
 
- implicit none
+   IMPLICIT NONE
 
-  INTEGER(i4)   ::  img, jmg, k, km
+   INTEGER(i4)   ::  img, jmg, k, km
 
-  if(trd%no.eq.0) return
+   IF ( trd%no .EQ. 0 ) RETURN
 
-   if(mpi%myrank.eq.0) then
-    img = grd%img
-    jmg = grd%jmg
-   else
-    img = 1
-    jmg = 1
-   endif
+   IF ( mpi%myrank .EQ. 0 ) THEN
+      img = grd%img
+      jmg = grd%jmg
+   ELSE
+      img = 1
+      jmg = 1
+   ENDIF
 
-   allocate ( trd%umn(img,jmg), trd%vmn(img,jmg) )
-   allocate( trd%uvl(img,jmg), trd%vvl(img,jmg) )
-   allocate( trd%uvl_ad(img,jmg), trd%vvl_ad(img,jmg) )
-   allocate ( trd%dx(img,jmg), trd%dy(img,jmg) )
+   ALLOCATE ( trd%umn(img,jmg), trd%vmn(img,jmg) )
+   ALLOCATE ( trd%uvl(img,jmg), trd%vvl(img,jmg) )
+   ALLOCATE ( trd%uvl_ad(img,jmg), trd%vvl_ad(img,jmg) )
+   ALLOCATE ( trd%dx(img,jmg), trd%dy(img,jmg) )
 
 
-  if(mpi%myrank.eq.0) then
-    open(511,file='trd_umn.dat',form='unformatted',status='old')
-    read(511)  trd%umn
-    read(511)  trd%vmn
-    close(511)
-  endif
+   IF ( mpi%myrank .EQ. 0 ) THEN
+      OPEN (511,FILE=drv%inpdir//'/trd_umn.dat',FORM='unformatted',STATUS='old')
+      READ (511)  trd%umn
+      READ (511)  trd%vmn
+      CLOSE (511)
+   ENDIF
 
-    k   = 1
-    km  = 1
+   k   = 1
+   km  = 1
 
-   if(mpi%nproc.gt.1)then
-      call gth_mpi( img, jmg, k, km, grd%dx, trd%dx)
-      call gth_mpi( img, jmg, k, km, grd%dy, trd%dy)
-   else
+   IF ( mpi%nproc .GT. 1 ) THEN
+      CALL gth_mpi( img, jmg, k, km, grd%dx, trd%dx)
+      CALL gth_mpi( img, jmg, k, km, grd%dy, trd%dy)
+   ELSE
       trd%dx(:,:) = grd%dx(:,:)
       trd%dy(:,:) = grd%dy(:,:)
-   endif
+   ENDIF
 
    trd%lev = 1
-   do k=1,grd%km-1
-    if( trd%dpt.ge.grd%dep(k) .and. trd%dpt.lt.grd%dep(k+1) ) trd%lev = k
-   enddo
+   DO k = 1,grd%km-1
+      IF ( trd%dpt .GE. grd%dep(k) .AND. trd%dpt .LT. grd%dep(k+1) ) trd%lev = k
+   ENDDO
 
-  trd%inx(:) = 0.0
-  trd%iny(:) = 0.0
+   trd%inx(:) = 0.0_r8
+   trd%iny(:) = 0.0_r8
 
-end subroutine int_par_trd
+END SUBROUTINE int_par_trd

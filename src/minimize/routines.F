@@ -1,23 +1,73 @@
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
+!======================================================================
+! Download from:
+! https://users.iems.northwestern.edu/~nocedal/lbfgsb.html
+! With Licence:
+!
+!  L-BFGS-B is released under the “New BSD License” (aka “Modified BSD License” 
+!  or “3-clause license”)
+!  Please read attached file License.txt
+!
+!======================================================================
+! 
+! Licence.txt file:
+!
+!  3-clause license ("New BSD License" or "Modified BSD License")
+!  New BSD License
+!  Author  Regents of the University of California
+!  Publisher       Public Domain
+!  Published       July 22, 1999[8]
+!  DFSG compatible Yes[7]
+!  FSF approved    Yes[1]
+!  OSI approved    Yes[3]:q:q!
+!  
+!  GPL compatible  Yes[1]
+!  Copyleft        No[1]
+!  Copyfree        Yes
+!  Linking from code with a different license      Yes
+!  
+!  The advertising clause was removed from the license text in the official BSD on July 22, 1999 by William Hoskins, Director of
+!  the Office of Technology Licensing for UC Berkeley.[8] Other BSD distributions removed the clause, but many similar clauses
+!  remain in BSD-derived code from other sources, and unrelated code using a derived license.
+!  
+!  While the original license is sometimes referred to as "BSD-old", the resulting 3-clause version is sometimes referred to by
+!  "BSD-new." Other names include "New BSD", "revised BSD", "BSD-3", or "3-clause BSD". This version has been vetted as
+!  an Open source license by the OSI as the "The BSD License".[3] The Free Software Foundation, which refers to the license
+!  as the "Modified BSD License", states that it is compatible with the GNU GPL. The FSF encourages users to be specific
+!  when referring to the license by name (i.e. not simply referring to it as "a BSD license" or "BSD-style") to avoid confusion with
+!  the original BSD license.[1]
+!  
+!  This version allows unlimited redistribution for any purpose as long as its copyright notices and the license's disclaimers of
+!  warranty are maintained. The license also contains a clause restricting use of the names of contributors for endorsement of a
+!  derived work without specific permission.
+!  
+!  Copyright (c) <year>, <copyright holder>
+!  All rights reserved.
+!  
+!  Redistribution and use in source and binary forms, with or without
+!  modification, are permitted provided that the following conditions are met:
+!      * Redistributions of source code must retain the above copyright
+!        notice, this list of conditions and the following disclaimer.
+!      * Redistributions in binary form must reproduce the above copyright
+!        notice, this list of conditions and the following disclaimer in the
+!        documentation and/or other materials provided with the distribution.
+!      * Neither the name of the <organization> nor the
+!        names of its contributors may be used to endorse or promote products
+!        derived from this software without specific prior written permission.
+!  
+!  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+!  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+!  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+!  DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+!  DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+!  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+!  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+!  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+!  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+!  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+!
+!
+c======================================================================
+!The MPI communication in this file file is part of OceanVar.
 c================    L-BFGS-B (version 2.1)   ==========================
       subroutine setulb(n, m, x, l, u, nbd, f, g, factr, pgtol, 
      +                  ws, wy,
@@ -39,183 +89,182 @@ c================    L-BFGS-B (version 2.1)   ==========================
       integer          mpicom, myrank, nproc
  
 c     ************
-c
-c     Subroutine setulb
-c
-c     This subroutine partitions the working arrays wa and iwa, and 
-c       then uses the limited memory BFGS method to solve the bound
-c       constrained optimization problem by calling mainlb.
-c       (The direct method will be used in the subspace minimization.)
-c
-c     n is an integer variable.
-c       On entry n is the dimension of the problem.
-c       On exit n is unchanged.
-c
-c     m is an integer variable.
-c       On entry m is the maximum number of variable metric corrections
-c         used to define the limited memory matrix.
-c       On exit m is unchanged.
-c
-c     x is a double precision array of dimension n.
-c       On entry x is an approximation to the solution.
-c       On exit x is the current approximation.
-c
-c     l is a double precision array of dimension n.
-c       On entry l is the lower bound on x.
-c       On exit l is unchanged.
-c
-c     u is a double precision array of dimension n.
-c       On entry u is the upper bound on x.
-c       On exit u is unchanged.
-c
-c     nbd is an integer array of dimension n.
-c       On entry nbd represents the type of bounds imposed on the
-c         variables, and must be specified as follows:
-c         nbd(i)=0 if x(i) is unbounded,
-c                1 if x(i) has only a lower bound,
-c                2 if x(i) has both lower and upper bounds, and
-c                3 if x(i) has only an upper bound.
-c       On exit nbd is unchanged.
-c
-c     f is a double precision variable.
-c       On first entry f is unspecified.
-c       On final exit f is the value of the function at x.
-c
-c     g is a double precision array of dimension n.
-c       On first entry g is unspecified.
-c       On final exit g is the value of the gradient at x.
-c
-c     factr is a double precision variable.
-c       On entry factr >= 0 is specified by the user.  The iteration
-c         will stop when
-c
-c         (f^k - f^{k+1})/max{|f^k|,|f^{k+1}|,1} <= factr*epsmch
-c
-c         where epsmch is the machine precision, which is automatically
-c         generated by the code. Typical values for factr: 1.d+12 for
-c         low accuracy; 1.d+7 for moderate accuracy; 1.d+1 for extremely
-c         high accuracy.
-c       On exit factr is unchanged.
-c
-c     pgtol is a double precision variable.
-c       On entry pgtol >= 0 is specified by the user.  The iteration
-c         will stop when
-c
-c                 max{|proj g_i | i = 1, ..., n} <= pgtol
-c
-c         where pg_i is the ith component of the projected gradient.   
-c       On exit pgtol is unchanged.
-c
-c     wa is a double precision working array of length 
-c       (2mmax + 4)nmax + 12mmax^2 + 12mmax.
-c
-c     iwa is an integer working array of length 3nmax.
-c
-c     task is a working string of characters of length 60 indicating
-c       the current job when entering and quitting this subroutine.
-c
-c     iprint is an integer variable that must be set by the user.
-c       It controls the frequency and type of output generated:
-c        iprint<0    no output is generated;
-c        iprint=0    print only one line at the last iteration;
-c        0<iprint<99 print also f and |proj g| every iprint iterations;
-c        iprint=99   print details of every iteration except n-vectors;
-c        iprint=100  print also the changes of active set and final x;
-c        iprint>100  print details of every iteration including x and g;
-c       When iprint > 0, the file iterate.dat will be created to
-c                        summarize the iteration.
-c
-c     csave is a working string of characters of length 60.
-c
-c     lsave is a logical working array of dimension 4.
-c       On exit with 'task' = NEW_X, the following information is 
-c                                                             available:
-c         If lsave(1) = .true.  then  the initial X has been replaced by
-c                                     its projection in the feasible set;
-c         If lsave(2) = .true.  then  the problem is constrained;
-c         If lsave(3) = .true.  then  each variable has upper and lower
-c                                     bounds;
-c
-c     isave is an integer working array of dimension 44.
-c       On exit with 'task' = NEW_X, the following information is 
-c                                                             available:
-c         isave(22) = the total number of intervals explored in the 
-c                         search of Cauchy points;
-c         isave(26) = the total number of skipped BFGS updates before 
-c                         the current iteration;
-c         isave(30) = the number of current iteration;
-c         isave(31) = the total number of BFGS updates prior the current
-c                         iteration;
-c         isave(33) = the number of intervals explored in the search of
-c                         Cauchy point in the current iteration;
-c         isave(34) = the total number of function and gradient 
-c                         evaluations;
-c         isave(36) = the number of function value or gradient
-c                                  evaluations in the current iteration;
-c         if isave(37) = 0  then the subspace argmin is within the box;
-c         if isave(37) = 1  then the subspace argmin is beyond the box;
-c         isave(38) = the number of free variables in the current
-c                         iteration;
-c         isave(39) = the number of active constraints in the current
-c                         iteration;
-c         n + 1 - isave(40) = the number of variables leaving the set of
-c                           active constraints in the current iteration;
-c         isave(41) = the number of variables entering the set of active
-c                         constraints in the current iteration.
-c
-c     dsave is a double precision working array of dimension 29.
-c       On exit with 'task' = NEW_X, the following information is
-c                                                             available:
-c         dsave(1) = current 'theta' in the BFGS matrix;
-c         dsave(2) = f(x) in the previous iteration;
-c         dsave(3) = factr*epsmch;
-c         dsave(4) = 2-norm of the line search direction vector;
-c         dsave(5) = the machine precision epsmch generated by the code;
-c         dsave(7) = the accumulated time spent on searching for
-c                                                         Cauchy points;
-c         dsave(8) = the accumulated time spent on
-c                                                 subspace minimization;
-c         dsave(9) = the accumulated time spent on line search;
-c         dsave(11) = the slope of the line search function at
-c                                  the current point of line search;
-c         dsave(12) = the maximum relative step length imposed in
-c                                                           line search;
-c         dsave(13) = the infinity norm of the projected gradient;
-c         dsave(14) = the relative step length in the line search;
-c         dsave(15) = the slope of the line search function at
-c                                 the starting point of the line search;
-c         dsave(16) = the square of the 2-norm of the line search
-c                                                      direction vector.
-c
-c     Subprograms called:
-c
-c       L-BFGS-B Library ... mainlb.    
-c
-c
-c     References:
-c
-c       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
-c       memory algorithm for bound constrained optimization'',
-c       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
-c
-c       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: a
-c       limited memory FORTRAN code for solving bound constrained
-c       optimization problems'', Tech. Report, NAM-11, EECS Department,
-c       Northwestern University, 1994.
-c
-c       (Postscript files of these papers are available via anonymous
-c        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!>     Subroutine setulb
+!!
+!!     This subroutine partitions the working arrays wa and iwa, and 
+!!       then uses the limited memory BFGS method to solve the bound
+!!       constrained optimization problem by calling mainlb.
+!!       (The direct method will be used in the subspace minimization.)
+!!
+!!     n is an integer variable.
+!!       On entry n is the dimension of the problem.
+!!       On exit n is unchanged.
+!!
+!!     m is an integer variable.
+!!       On entry m is the maximum number of variable metric corrections
+!!         used to define the limited memory matrix.
+!!       On exit m is unchanged.
+!!
+!!     x is a double precision array of dimension n.
+!!       On entry x is an approximation to the solution.
+!!       On exit x is the current approximation.
+!!
+!!     l is a double precision array of dimension n.
+!!       On entry l is the lower bound on x.
+!!       On exit l is unchanged.
+!!
+!!     u is a double precision array of dimension n.
+!!       On entry u is the upper bound on x.
+!!       On exit u is unchanged.
+!!
+!!     nbd is an integer array of dimension n.
+!!       On entry nbd represents the type of bounds imposed on the
+!!         variables, and must be specified as follows:
+!!         nbd(i)=0 if x(i) is unbounded,
+!!                1 if x(i) has only a lower bound,
+!!                2 if x(i) has both lower and upper bounds, and
+!!                3 if x(i) has only an upper bound.
+!!       On exit nbd is unchanged.
+!!
+!!     f is a double precision variable.
+!!       On first entry f is unspecified.
+!!       On final exit f is the value of the function at x.
+!!
+!!     g is a double precision array of dimension n.
+!!       On first entry g is unspecified.
+!!       On final exit g is the value of the gradient at x.
+!!
+!!     factr is a double precision variable.
+!!       On entry factr >= 0 is specified by the user.  The iteration
+!!         will stop when
+!!
+!!         (f^k - f^{k+1})/max{|f^k|,|f^{k+1}|,1} <= factr*epsmch
+!!
+!!         where epsmch is the machine precision, which is automatically
+!!         generated by the code. Typical values for factr: 1.d+12 for
+!!         low accuracy; 1.d+7 for moderate accuracy; 1.d+1 for extremely
+!!         high accuracy.
+!!       On exit factr is unchanged.
+!!
+!!     pgtol is a double precision variable.
+!!       On entry pgtol >= 0 is specified by the user.  The iteration
+!!         will stop when
+!!
+!!                 max{|proj g_i | i = 1, ..., n} <= pgtol
+!!
+!!         where pg_i is the ith component of the projected gradient.   
+!!       On exit pgtol is unchanged.
+!!
+!!     wa is a double precision working array of length 
+!!       (2mmax + 4)nmax + 12mmax^2 + 12mmax.
+!!
+!!     iwa is an integer working array of length 3nmax.
+!!
+!!     task is a working string of characters of length 60 indicating
+!!       the current job when entering and quitting this subroutine.
+!!
+!!     iprint is an integer variable that must be set by the user.
+!!       It controls the frequency and type of output generated:
+!!        iprint<0    no output is generated;
+!!        iprint=0    print only one line at the last iteration;
+!!        0<iprint<99 print also f and |proj g| every iprint iterations;
+!!        iprint=99   print details of every iteration except n-vectors;
+!!        iprint=100  print also the changes of active set and final x;
+!!        iprint>100  print details of every iteration including x and g;
+!!       When iprint > 0, the file iterate.dat will be created to
+!!                        summarize the iteration.
+!!
+!!     csave is a working string of characters of length 60.
+!!
+!!     lsave is a logical working array of dimension 4.
+!!       On exit with 'task' = NEW_X, the following information is 
+!!                                                             available:
+!!         If lsave(1) = .true.  then  the initial X has been replaced by
+!!                                     its projection in the feasible set;
+!!         If lsave(2) = .true.  then  the problem is constrained;
+!!         If lsave(3) = .true.  then  each variable has upper and lower
+!!                                     bounds;
+!!
+!!     isave is an integer working array of dimension 44.
+!!       On exit with 'task' = NEW_X, the following information is 
+!!                                                             available:
+!!         isave(22) = the total number of intervals explored in the 
+!!                         search of Cauchy points;
+!!         isave(26) = the total number of skipped BFGS updates before 
+!!                         the current iteration;
+!!         isave(30) = the number of current iteration;
+!!         isave(31) = the total number of BFGS updates prior the current
+!!                         iteration;
+!!         isave(33) = the number of intervals explored in the search of
+!!                         Cauchy point in the current iteration;
+!!         isave(34) = the total number of function and gradient 
+!!                         evaluations;
+!!         isave(36) = the number of function value or gradient
+!!                                  evaluations in the current iteration;
+!!         if isave(37) = 0  then the subspace argmin is within the box;
+!!         if isave(37) = 1  then the subspace argmin is beyond the box;
+!!         isave(38) = the number of free variables in the current
+!!                         iteration;
+!!         isave(39) = the number of active constraints in the current
+!!                         iteration;
+!!         n + 1 - isave(40) = the number of variables leaving the set of
+!!                           active constraints in the current iteration;
+!!         isave(41) = the number of variables entering the set of active
+!!                         constraints in the current iteration.
+!!
+!!     dsave is a double precision working array of dimension 29.
+!!       On exit with 'task' = NEW_X, the following information is
+!!                                                             available:
+!!         dsave(1) = current 'theta' in the BFGS matrix;
+!!         dsave(2) = f(x) in the previous iteration;
+!!         dsave(3) = factr*epsmch;
+!!         dsave(4) = 2-norm of the line search direction vector;
+!!         dsave(5) = the machine precision epsmch generated by the code;
+!!         dsave(7) = the accumulated time spent on searching for
+!!                                                         Cauchy points;
+!!         dsave(8) = the accumulated time spent on
+!!                                                 subspace minimization;
+!!         dsave(9) = the accumulated time spent on line search;
+!!         dsave(11) = the slope of the line search function at
+!!                                  the current point of line search;
+!!         dsave(12) = the maximum relative step length imposed in
+!!                                                           line search;
+!!         dsave(13) = the infinity norm of the projected gradient;
+!!         dsave(14) = the relative step length in the line search;
+!!         dsave(15) = the slope of the line search function at
+!!                                 the starting point of the line search;
+!!         dsave(16) = the square of the 2-norm of the line search
+!!                                                      direction vector.
+!!
+!!     Subprograms called:
+!!
+!!       L-BFGS-B Library ... mainlb.    
+!!
+!!
+!!     References:
+!!
+!!       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
+!!       memory algorithm for bound constrained optimization'',
+!!       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
+!!
+!!       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: a
+!!       limited memory FORTRAN code for solving bound constrained
+!!       optimization problems'', Tech. Report, NAM-11, EECS Department,
+!!       Northwestern University, 1994.
+!!
+!!       (Postscript files of these papers are available via anonymous
+!!        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
  
       integer   l1,l2,l3,lws,lr,lz,lt,ld,lsg,lwa,lyg,
@@ -280,33 +329,11 @@ c     ************
 
 c======================= The end of setulb =============================
  
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
       subroutine mainlb(n, m, x, l, u, nbd, f, g, factr, pgtol, ws, wy,
      +                  sy, ss, yy, wt, wn, snd, z, r, d, t, wa, sg,
      +                  sgo, yg, ygo, index, iwhere, indx2, task,
      +                  iprint, csave, lsave, isave, dsave,
      +                 mpicom, myrank, nproc)
- 
       character*60     task, csave
       logical          lsave(4)
       integer          n, m, iprint, nbd(n), index(n),
@@ -320,181 +347,181 @@ c======================= The end of setulb =============================
 
 c     ************
 c
-c     Subroutine mainlb
-c
-c     This subroutine solves bound constrained optimization problems by
-c       using the compact formula of the limited memory BFGS updates.
-c       
-c     n is an integer variable.
-c       On entry n is the number of variables.
-c       On exit n is unchanged.
-c
-c     m is an integer variable.
-c       On entry m is the maximum number of variable metric
-c          corrections allowed in the limited memory matrix.
-c       On exit m is unchanged.
-c
-c     x is a double precision array of dimension n.
-c       On entry x is an approximation to the solution.
-c       On exit x is the current approximation.
-c
-c     l is a double precision array of dimension n.
-c       On entry l is the lower bound of x.
-c       On exit l is unchanged.
-c
-c     u is a double precision array of dimension n.
-c       On entry u is the upper bound of x.
-c       On exit u is unchanged.
-c
-c     nbd is an integer array of dimension n.
-c       On entry nbd represents the type of bounds imposed on the
-c         variables, and must be specified as follows:
-c         nbd(i)=0 if x(i) is unbounded,
-c                1 if x(i) has only a lower bound,
-c                2 if x(i) has both lower and upper bounds,
-c                3 if x(i) has only an upper bound.
-c       On exit nbd is unchanged.
-c
-c     f is a double precision variable.
-c       On first entry f is unspecified.
-c       On final exit f is the value of the function at x.
-c
-c     g is a double precision array of dimension n.
-c       On first entry g is unspecified.
-c       On final exit g is the value of the gradient at x.
-c
-c     factr is a double precision variable.
-c       On entry factr >= 0 is specified by the user.  The iteration
-c         will stop when
-c
-c         (f^k - f^{k+1})/max{|f^k|,|f^{k+1}|,1} <= factr*epsmch
-c
-c         where epsmch is the machine precision, which is automatically
-c         generated by the code.
-c       On exit factr is unchanged.
-c
-c     pgtol is a double precision variable.
-c       On entry pgtol >= 0 is specified by the user.  The iteration
-c         will stop when
-c
-c                 max{|proj g_i | i = 1, ..., n} <= pgtol
-c
-c         where pg_i is the ith component of the projected gradient.
-c       On exit pgtol is unchanged.
-c
-c     ws, wy, sy, and wt are double precision working arrays used to
-c       store the following information defining the limited memory
-c          BFGS matrix:
-c          ws, of dimension n x m, stores S, the matrix of s-vectors;
-c          wy, of dimension n x m, stores Y, the matrix of y-vectors;
-c          sy, of dimension m x m, stores S'Y
-c          ss, of dimension m x m, stores S'S;
-c	   yy, of dimension m x m, stores Y'Y;
-c          wt, of dimension m x m, stores the Cholesky factorization
-c                                  of (theta*S'S+LD^(-1)L'); see eq.
-c                                  (2.26) in [3].
-c
-c     wn is a double precision working array of dimension 2m x 2m
-c       used to store the LEL^T factorization of the indefinite matrix
-c                 K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
-c                     [L_a -R_z           theta*S'AA'S ]
-c
-c       where     E = [-I  0]
-c                     [ 0  I]
-c
-c     snd is a double precision working array of dimension 2m x 2m
-c       used to store the lower triangular part of
-c                 N = [Y' ZZ'Y   L_a'+R_z']
-c                     [L_a +R_z  S'AA'S   ]
-c	     
-c     z(n),r(n),d(n),t(n),wa(8*m) are double precision working arrays.
-c       z is used at different times to store the Cauchy point and
-c       the Newton point.
-c
-c     sg(m),sgo(m),yg(m),ygo(m) are double precision working arrays. 
-c
-c     index is an integer working array of dimension n.
-c       In subroutine freev, index is used to store the free and fixed
-c          variables at the Generalized Cauchy Point (GCP).
-c
-c     iwhere is an integer working array of dimension n used to record
-c       the status of the vector x for GCP computation.
-c       iwhere(i)=0 or -3 if x(i) is free and has bounds,
-c                 1       if x(i) is fixed at l(i), and l(i) .ne. u(i)
-c                 2       if x(i) is fixed at u(i), and u(i) .ne. l(i)
-c                 3       if x(i) is always fixed, i.e.,  u(i)=x(i)=l(i)
-c                -1       if x(i) is always free, i.e., no bounds on it.
-c
-c     indx2 is an integer working array of dimension n.
-c       Within subroutine cauchy, indx2 corresponds to the array iorder.
-c       In subroutine freev, a list of variables entering and leaving
-c       the free set is stored in indx2, and it is passed on to
-c       subroutine formk with this information.
-c
-c     task is a working string of characters of length 60 indicating
-c       the current job when entering and leaving this subroutine.
-c
-c     iprint is an INTEGER variable that must be set by the user.
-c       It controls the frequency and type of output generated:
-c        iprint<0    no output is generated;
-c        iprint=0    print only one line at the last iteration;
-c        0<iprint<99 print also f and |proj g| every iprint iterations;
-c        iprint=99   print details of every iteration except n-vectors;
-c        iprint=100  print also the changes of active set and final x;
-c        iprint>100  print details of every iteration including x and g;
-c       When iprint > 0, the file iterate.dat will be created to
-c                        summarize the iteration.
-c
-c     csave is a working string of characters of length 60.
-c
-c     lsave is a logical working array of dimension 4.
-c
-c     isave is an integer working array of dimension 23.
-c
-c     dsave is a double precision working array of dimension 29.
-c
-c
-c     Subprograms called
-c
-c       L-BFGS-B Library ... cauchy, subsm, lnsrlb, formk, 
-c
-c        errclb, prn1lb, prn2lb, prn3lb, active, projgr,
-c
-c        freev, cmprlb, matupd, formt.
-c
-c       Minpack2 Library ... timer, dpmeps.
-c
-c       Linpack Library ... dcopy, ddot.
-c
-c
-c     References:
-c
-c       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
-c       memory algorithm for bound constrained optimization'',
-c       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
-c
-c       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: FORTRAN
-c       Subroutines for Large Scale Bound Constrained Optimization''
-c       Tech. Report, NAM-11, EECS Department, Northwestern University,
-c       1994.
-c 
-c       [3] R. Byrd, J. Nocedal and R. Schnabel "Representations of
-c       Quasi-Newton Matrices and their use in Limited Memory Methods'',
-c       Mathematical Programming 63 (1994), no. 4, pp. 129-156.
-c
-c       (Postscript files of these papers are available via anonymous
-c        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!>     Subroutine mainlb
+!!
+!!     This subroutine solves bound constrained optimization problems by
+!!       using the compact formula of the limited memory BFGS updates.
+!!       
+!!     n is an integer variable.
+!!       On entry n is the number of variables.
+!!       On exit n is unchanged.
+!!
+!!     m is an integer variable.
+!!       On entry m is the maximum number of variable metric
+!!          corrections allowed in the limited memory matrix.
+!!       On exit m is unchanged.
+!!
+!!     x is a double precision array of dimension n.
+!!       On entry x is an approximation to the solution.
+!!       On exit x is the current approximation.
+!!
+!!     l is a double precision array of dimension n.
+!!       On entry l is the lower bound of x.
+!!       On exit l is unchanged.
+!!
+!!     u is a double precision array of dimension n.
+!!       On entry u is the upper bound of x.
+!!       On exit u is unchanged.
+!!
+!!     nbd is an integer array of dimension n.
+!!       On entry nbd represents the type of bounds imposed on the
+!!         variables, and must be specified as follows:
+!!         nbd(i)=0 if x(i) is unbounded,
+!!                1 if x(i) has only a lower bound,
+!!                2 if x(i) has both lower and upper bounds,
+!!                3 if x(i) has only an upper bound.
+!!       On exit nbd is unchanged.
+!!
+!!     f is a double precision variable.
+!!       On first entry f is unspecified.
+!!       On final exit f is the value of the function at x.
+!!
+!!     g is a double precision array of dimension n.
+!!       On first entry g is unspecified.
+!!       On final exit g is the value of the gradient at x.
+!!
+!!     factr is a double precision variable.
+!!       On entry factr >= 0 is specified by the user.  The iteration
+!!         will stop when
+!!
+!!         (f^k - f^{k+1})/max{|f^k|,|f^{k+1}|,1} <= factr*epsmch
+!!
+!!         where epsmch is the machine precision, which is automatically
+!!         generated by the code.
+!!       On exit factr is unchanged.
+!!
+!!     pgtol is a double precision variable.
+!!       On entry pgtol >= 0 is specified by the user.  The iteration
+!!         will stop when
+!!
+!!                 max{|proj g_i | i = 1, ..., n} <= pgtol
+!!
+!!         where pg_i is the ith component of the projected gradient.
+!!       On exit pgtol is unchanged.
+!!
+!!     ws, wy, sy, and wt are double precision working arrays used to
+!!       store the following information defining the limited memory
+!!          BFGS matrix:
+!!          ws, of dimension n x m, stores S, the matrix of s-vectors;
+!!          wy, of dimension n x m, stores Y, the matrix of y-vectors;
+!!          sy, of dimension m x m, stores S'Y
+!!          ss, of dimension m x m, stores S'S;
+!!	   yy, of dimension m x m, stores Y'Y;
+!!          wt, of dimension m x m, stores the Cholesky factorization
+!!                                  of (theta*S'S+LD^(-1)L'); see eq.
+!!                                  (2.26) in [3].
+!!
+!!     wn is a double precision working array of dimension 2m x 2m
+!!       used to store the LEL^T factorization of the indefinite matrix
+!!                 K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
+!!                     [L_a -R_z           theta*S'AA'S ]
+!!
+!!       where     E = [-I  0]
+!!                     [ 0  I]
+!!
+!!     snd is a double precision working array of dimension 2m x 2m
+!!       used to store the lower triangular part of
+!!                 N = [Y' ZZ'Y   L_a'+R_z']
+!!                     [L_a +R_z  S'AA'S   ]
+!!	     
+!!     z(n),r(n),d(n),t(n),wa(8*m) are double precision working arrays.
+!!       z is used at different times to store the Cauchy point and
+!!       the Newton point.
+!!
+!!     sg(m),sgo(m),yg(m),ygo(m) are double precision working arrays. 
+!!
+!!     index is an integer working array of dimension n.
+!!       In subroutine freev, index is used to store the free and fixed
+!!          variables at the Generalized Cauchy Point (GCP).
+!!
+!!     iwhere is an integer working array of dimension n used to record
+!!       the status of the vector x for GCP computation.
+!!       iwhere(i)=0 or -3 if x(i) is free and has bounds,
+!!                 1       if x(i) is fixed at l(i), and l(i) .ne. u(i)
+!!                 2       if x(i) is fixed at u(i), and u(i) .ne. l(i)
+!!                 3       if x(i) is always fixed, i.e.,  u(i)=x(i)=l(i)
+!!                -1       if x(i) is always free, i.e., no bounds on it.
+!!
+!!     indx2 is an integer working array of dimension n.
+!!       Within subroutine cauchy, indx2 corresponds to the array iorder.
+!!       In subroutine freev, a list of variables entering and leaving
+!!       the free set is stored in indx2, and it is passed on to
+!!       subroutine formk with this information.
+!!
+!!     task is a working string of characters of length 60 indicating
+!!       the current job when entering and leaving this subroutine.
+!!
+!!     iprint is an INTEGER variable that must be set by the user.
+!!       It controls the frequency and type of output generated:
+!!        iprint<0    no output is generated;
+!!        iprint=0    print only one line at the last iteration;
+!!        0<iprint<99 print also f and |proj g| every iprint iterations;
+!!        iprint=99   print details of every iteration except n-vectors;
+!!        iprint=100  print also the changes of active set and final x;
+!!        iprint>100  print details of every iteration including x and g;
+!!       When iprint > 0, the file iterate.dat will be created to
+!!                        summarize the iteration.
+!!
+!!     csave is a working string of characters of length 60.
+!!
+!!     lsave is a logical working array of dimension 4.
+!!
+!!     isave is an integer working array of dimension 23.
+!!
+!!     dsave is a double precision working array of dimension 29.
+!!
+!!
+!!     Subprograms called
+!!
+!!       L-BFGS-B Library ... cauchy, subsm, lnsrlb, formk, 
+!!
+!!        errclb, prn1lb, prn2lb, prn3lb, active, projgr,
+!!
+!!        freev, cmprlb, matupd, formt.
+!!
+!!       Minpack2 Library ... timer, dpmeps.
+!!
+!!       Linpack Library ... dcopy, ddot.
+!!
+!!
+!!     References:
+!!
+!!       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
+!!       memory algorithm for bound constrained optimization'',
+!!       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
+!!
+!!       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: FORTRAN
+!!       Subroutines for Large Scale Bound Constrained Optimization''
+!!       Tech. Report, NAM-11, EECS Department, Northwestern University,
+!!       1994.
+!! 
+!!       [3] R. Byrd, J. Nocedal and R. Schnabel "Representations of
+!!       Quasi-Newton Matrices and their use in Limited Memory Methods'',
+!!       Mathematical Programming 63 (1994), no. 4, pp. 129-156.
+!!
+!!       (Postscript files of these papers are available via anonymous
+!!        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
  
       logical          prjctd,cnstnd,boxed,updatd,wrk
@@ -510,6 +537,10 @@ c     ************
       double precision one,zero
       parameter        (one=1.0d0,zero=0.0d0)
 
+      iback=0; itail=0; ifun=0; iword=0; nact=0; ileave=0; nenter=0
+      fold =0.0d0; dnorm=0.0d0; cpu1=0.0d0; cpu2 =0.0d0; gd  =0.0d0
+      stpmx =0.0d0; sbgnrm=0.0d0
+      stp  =0.0d0; gdold=0.0d0; dtd =0.0d0
 
       if (task .eq. 'START') then
 
@@ -1036,30 +1067,30 @@ c======================= The end of mainlb =============================
       double precision x(n), l(n), u(n)
 
 c     ************
-c
-c     Subroutine active
-c
-c     This subroutine initializes iwhere and projects the initial x to
-c       the feasible set if necessary.
-c
-c     iwhere is an integer array of dimension n.
-c       On entry iwhere is unspecified.
-c       On exit iwhere(i)=-1  if x(i) has no bounds
-c                         3   if l(i)=u(i)
-c                         0   otherwise.
-c       In cauchy, iwhere is given finer gradations.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine active
+!!
+!!     This subroutine initializes iwhere and projects the initial x to
+!!       the feasible set if necessary.
+!!
+!!     iwhere is an integer array of dimension n.
+!!       On entry iwhere is unspecified.
+!!       On exit iwhere(i)=-1  if x(i) has no bounds
+!!                         3   if l(i)=u(i)
+!!                         0   otherwise.
+!!       In cauchy, iwhere is given finer gradations.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer          nbdd,i
@@ -1119,61 +1150,61 @@ c======================= The end of active =============================
       double precision sy(m, m), wt(m, m), v(2*col), p(2*col)
 
 c     ************
-c
-c     Subroutine bmv
-c
-c     This subroutine computes the product of the 2m x 2m middle matrix 
-c	in the compact L-BFGS formula of B and a 2m vector v;  
-c	it returns the product in p.
-c	
-c     m is an integer variable.
-c       On entry m is the maximum number of variable metric corrections
-c         used to define the limited memory matrix.
-c       On exit m is unchanged.
-c
-c     sy is a double precision array of dimension m x m.
-c       On entry sy specifies the matrix S'Y.
-c       On exit sy is unchanged.
-c
-c     wt is a double precision array of dimension m x m.
-c       On entry wt specifies the upper triangular matrix J' which is 
-c         the Cholesky factor of (thetaS'S+LD^(-1)L').
-c       On exit wt is unchanged.
-c
-c     col is an integer variable.
-c       On entry col specifies the number of s-vectors (or y-vectors)
-c         stored in the compact L-BFGS formula.
-c       On exit col is unchanged.
-c
-c     v is a double precision array of dimension 2col.
-c       On entry v specifies vector v.
-c       On exit v is unchanged.
-c
-c     p is a double precision array of dimension 2col.
-c       On entry p is unspecified.
-c       On exit p is the product Mv.
-c
-c     info is an integer variable.
-c       On entry info is unspecified.
-c       On exit info = 0       for normal return,
-c                    = nonzero for abnormal return when the system
-c                                to be solved by dtrsl is singular.
-c
-c     Subprograms called:
-c
-c       Linpack ... dtrsl.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine bmv
+!!
+!!     This subroutine computes the product of the 2m x 2m middle matrix 
+!!	in the compact L-BFGS formula of B and a 2m vector v;  
+!!	it returns the product in p.
+!!	
+!!     m is an integer variable.
+!!       On entry m is the maximum number of variable metric corrections
+!!         used to define the limited memory matrix.
+!!       On exit m is unchanged.
+!!
+!!     sy is a double precision array of dimension m x m.
+!!       On entry sy specifies the matrix S'Y.
+!!       On exit sy is unchanged.
+!!
+!!     wt is a double precision array of dimension m x m.
+!!       On entry wt specifies the upper triangular matrix J' which is 
+!!         the Cholesky factor of (thetaS'S+LD^(-1)L').
+!!       On exit wt is unchanged.
+!!
+!!     col is an integer variable.
+!!       On entry col specifies the number of s-vectors (or y-vectors)
+!!         stored in the compact L-BFGS formula.
+!!       On exit col is unchanged.
+!!
+!!     v is a double precision array of dimension 2col.
+!!       On entry v specifies vector v.
+!!       On exit v is unchanged.
+!!
+!!     p is a double precision array of dimension 2col.
+!!       On entry p is unspecified.
+!!       On exit p is the product Mv.
+!!
+!!     info is an integer variable.
+!!       On entry info is unspecified.
+!!       On exit info = 0       for normal return,
+!!                    = nonzero for abnormal return when the system
+!!                                to be solved by dtrsl is singular.
+!!
+!!     Subprograms called:
+!!
+!!       Linpack ... dtrsl.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
  
       integer          i,k,i2
@@ -1229,27 +1260,6 @@ c                 =-D^(-1/2)p1+D^(-1)L'p2.
 
 c======================== The end of bmv ===============================
 
-c---------------------------------------------------------------------------
-c                                                                          c
-c    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   c
-c                                                                          c
-c    The MPI communication in this file file is part of OceanVar.          c
-c                                                                          c
-c    OceanVar is free software: you can redistribute it and/or modify.     c
-c    it under the terms of the GNU General Public License as published by  c
-c    the Free Software Foundation, either version 3 of the License, or     c
-c    (at your option) any later version.                                   c
-c                                                                          c
-c    OceanVar is distributed in the hope that it will be useful,           c
-c    but WITHOUT ANY WARRANTY; without even the implied warranty of        c
-c    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         c
-c    GNU General Public License for more details.                          c
-c                                                                          c
-c    You should have received a copy of the GNU General Public License     c
-c    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     c
-c                                                                          c
-c---------------------------------------------------------------------------
-
       subroutine cauchy(n, x, l, u, nbd, g, iorder, iwhere, t, d, xcp, 
      +                  m, wy, ws, sy, wt, theta, col, head, p, c, wbp, 
      +                  v, nint, sg, yg, iprint, sbgnrm, info, epsmch,
@@ -1264,180 +1274,180 @@ c---------------------------------------------------------------------------
       integer          mpicom, myrank, nproc
 
 c     ************
-c
-c     Subroutine cauchy
-c
-c     For given x, l, u, g (with sbgnrm > 0), and a limited memory
-c       BFGS matrix B defined in terms of matrices WY, WS, WT, and
-c       scalars head, col, and theta, this subroutine computes the
-c       generalized Cauchy point (GCP), defined as the first local
-c       minimizer of the quadratic
-c
-c                  Q(x + s) = g's + 1/2 s'Bs
-c
-c       along the projected gradient direction P(x-tg,l,u).
-c       The routine returns the GCP in xcp. 
-c       
-c     n is an integer variable.
-c       On entry n is the dimension of the problem.
-c       On exit n is unchanged.
-c
-c     x is a double precision array of dimension n.
-c       On entry x is the starting point for the GCP computation.
-c       On exit x is unchanged.
-c
-c     l is a double precision array of dimension n.
-c       On entry l is the lower bound of x.
-c       On exit l is unchanged.
-c
-c     u is a double precision array of dimension n.
-c       On entry u is the upper bound of x.
-c       On exit u is unchanged.
-c
-c     nbd is an integer array of dimension n.
-c       On entry nbd represents the type of bounds imposed on the
-c         variables, and must be specified as follows:
-c         nbd(i)=0 if x(i) is unbounded,
-c                1 if x(i) has only a lower bound,
-c                2 if x(i) has both lower and upper bounds, and
-c                3 if x(i) has only an upper bound. 
-c       On exit nbd is unchanged.
-c
-c     g is a double precision array of dimension n.
-c       On entry g is the gradient of f(x).  g must be a nonzero vector.
-c       On exit g is unchanged.
-c
-c     iorder is an integer working array of dimension n.
-c       iorder will be used to store the breakpoints in the piecewise
-c       linear path and free variables encountered. On exit,
-c         iorder(1),...,iorder(nleft) are indices of breakpoints
-c                                which have not been encountered; 
-c         iorder(nleft+1),...,iorder(nbreak) are indices of
-c                                     encountered breakpoints; and
-c         iorder(nfree),...,iorder(n) are indices of variables which
-c                 have no bound constraits along the search direction.
-c
-c     iwhere is an integer array of dimension n.
-c       On entry iwhere indicates only the permanently fixed (iwhere=3)
-c       or free (iwhere= -1) components of x.
-c       On exit iwhere records the status of the current x variables.
-c       iwhere(i)=-3  if x(i) is free and has bounds, but is not moved
-c                 0   if x(i) is free and has bounds, and is moved
-c                 1   if x(i) is fixed at l(i), and l(i) .ne. u(i)
-c                 2   if x(i) is fixed at u(i), and u(i) .ne. l(i)
-c                 3   if x(i) is always fixed, i.e.,  u(i)=x(i)=l(i)
-c                 -1  if x(i) is always free, i.e., it has no bounds.
-c
-c     t is a double precision working array of dimension n. 
-c       t will be used to store the break points.
-c
-c     d is a double precision array of dimension n used to store
-c       the Cauchy direction P(x-tg)-x.
-c
-c     xcp is a double precision array of dimension n used to return the
-c       GCP on exit.
-c
-c     m is an integer variable.
-c       On entry m is the maximum number of variable metric corrections 
-c         used to define the limited memory matrix.
-c       On exit m is unchanged.
-c
-c     ws, wy, sy, and wt are double precision arrays.
-c       On entry they store information that defines the
-c                             limited memory BFGS matrix:
-c         ws(n,m) stores S, a set of s-vectors;
-c         wy(n,m) stores Y, a set of y-vectors;
-c         sy(m,m) stores S'Y;
-c         wt(m,m) stores the
-c                 Cholesky factorization of (theta*S'S+LD^(-1)L').
-c       On exit these arrays are unchanged.
-c
-c     theta is a double precision variable.
-c       On entry theta is the scaling factor specifying B_0 = theta I.
-c       On exit theta is unchanged.
-c
-c     col is an integer variable.
-c       On entry col is the actual number of variable metric
-c         corrections stored so far.
-c       On exit col is unchanged.
-c
-c     head is an integer variable.
-c       On entry head is the location of the first s-vector (or y-vector)
-c         in S (or Y).
-c       On exit col is unchanged.
-c
-c     p is a double precision working array of dimension 2m.
-c       p will be used to store the vector p = W^(T)d.
-c
-c     c is a double precision working array of dimension 2m.
-c       c will be used to store the vector c = W^(T)(xcp-x).
-c
-c     wbp is a double precision working array of dimension 2m.
-c       wbp will be used to store the row of W corresponding
-c         to a breakpoint.
-c
-c     v is a double precision working array of dimension 2m.
-c
-c     nint is an integer variable.
-c       On exit nint records the number of quadratic segments explored
-c         in searching for the GCP.
-c
-c     sg and yg are double precision arrays of dimension m.
-c       On entry sg  and yg store S'g and Y'g correspondingly.
-c       On exit they are unchanged. 
-c 
-c     iprint is an INTEGER variable that must be set by the user.
-c       It controls the frequency and type of output generated:
-c        iprint<0    no output is generated;
-c        iprint=0    print only one line at the last iteration;
-c        0<iprint<99 print also f and |proj g| every iprint iterations;
-c        iprint=99   print details of every iteration except n-vectors;
-c        iprint=100  print also the changes of active set and final x;
-c        iprint>100  print details of every iteration including x and g;
-c       When iprint > 0, the file iterate.dat will be created to
-c                        summarize the iteration.
-c
-c     sbgnrm is a double precision variable.
-c       On entry sbgnrm is the norm of the projected gradient at x.
-c       On exit sbgnrm is unchanged.
-c
-c     info is an integer variable.
-c       On entry info is 0.
-c       On exit info = 0       for normal return,
-c                    = nonzero for abnormal return when the the system
-c                              used in routine bmv is singular.
-c
-c     Subprograms called:
-c 
-c       L-BFGS-B Library ... hpsolb, bmv.
-c
-c       Linpack ... dscal dcopy, daxpy.
-c
-c
-c     References:
-c
-c       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
-c       memory algorithm for bound constrained optimization'',
-c       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
-c
-c       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: FORTRAN
-c       Subroutines for Large Scale Bound Constrained Optimization''
-c       Tech. Report, NAM-11, EECS Department, Northwestern University,
-c       1994.
-c
-c       (Postscript files of these papers are available via anonymous
-c        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine cauchy
+!!
+!!     For given x, l, u, g (with sbgnrm > 0), and a limited memory
+!!       BFGS matrix B defined in terms of matrices WY, WS, WT, and
+!!       scalars head, col, and theta, this subroutine computes the
+!!       generalized Cauchy point (GCP), defined as the first local
+!!       minimizer of the quadratic
+!!
+!!                  Q(x + s) = g's + 1/2 s'Bs
+!!
+!!       along the projected gradient direction P(x-tg,l,u).
+!!       The routine returns the GCP in xcp. 
+!!       
+!!     n is an integer variable.
+!!       On entry n is the dimension of the problem.
+!!       On exit n is unchanged.
+!!
+!!     x is a double precision array of dimension n.
+!!       On entry x is the starting point for the GCP computation.
+!!       On exit x is unchanged.
+!!
+!!     l is a double precision array of dimension n.
+!!       On entry l is the lower bound of x.
+!!       On exit l is unchanged.
+!!
+!!     u is a double precision array of dimension n.
+!!       On entry u is the upper bound of x.
+!!       On exit u is unchanged.
+!!
+!!     nbd is an integer array of dimension n.
+!!       On entry nbd represents the type of bounds imposed on the
+!!         variables, and must be specified as follows:
+!!         nbd(i)=0 if x(i) is unbounded,
+!!                1 if x(i) has only a lower bound,
+!!                2 if x(i) has both lower and upper bounds, and
+!!                3 if x(i) has only an upper bound. 
+!!       On exit nbd is unchanged.
+!!
+!!     g is a double precision array of dimension n.
+!!       On entry g is the gradient of f(x).  g must be a nonzero vector.
+!!       On exit g is unchanged.
+!!
+!!     iorder is an integer working array of dimension n.
+!!       iorder will be used to store the breakpoints in the piecewise
+!!       linear path and free variables encountered. On exit,
+!!         iorder(1),...,iorder(nleft) are indices of breakpoints
+!!                                which have not been encountered; 
+!!         iorder(nleft+1),...,iorder(nbreak) are indices of
+!!                                     encountered breakpoints; and
+!!         iorder(nfree),...,iorder(n) are indices of variables which
+!!                 have no bound constraits along the search direction.
+!!
+!!     iwhere is an integer array of dimension n.
+!!       On entry iwhere indicates only the permanently fixed (iwhere=3)
+!!       or free (iwhere= -1) components of x.
+!!       On exit iwhere records the status of the current x variables.
+!!       iwhere(i)=-3  if x(i) is free and has bounds, but is not moved
+!!                 0   if x(i) is free and has bounds, and is moved
+!!                 1   if x(i) is fixed at l(i), and l(i) .ne. u(i)
+!!                 2   if x(i) is fixed at u(i), and u(i) .ne. l(i)
+!!                 3   if x(i) is always fixed, i.e.,  u(i)=x(i)=l(i)
+!!                 -1  if x(i) is always free, i.e., it has no bounds.
+!!
+!!     t is a double precision working array of dimension n. 
+!!       t will be used to store the break points.
+!!
+!!     d is a double precision array of dimension n used to store
+!!       the Cauchy direction P(x-tg)-x.
+!!
+!!     xcp is a double precision array of dimension n used to return the
+!!       GCP on exit.
+!!
+!!     m is an integer variable.
+!!       On entry m is the maximum number of variable metric corrections 
+!!         used to define the limited memory matrix.
+!!       On exit m is unchanged.
+!!
+!!     ws, wy, sy, and wt are double precision arrays.
+!!       On entry they store information that defines the
+!!                             limited memory BFGS matrix:
+!!         ws(n,m) stores S, a set of s-vectors;
+!!         wy(n,m) stores Y, a set of y-vectors;
+!!         sy(m,m) stores S'Y;
+!!         wt(m,m) stores the
+!!                 Cholesky factorization of (theta*S'S+LD^(-1)L').
+!!       On exit these arrays are unchanged.
+!!
+!!     theta is a double precision variable.
+!!       On entry theta is the scaling factor specifying B_0 = theta I.
+!!       On exit theta is unchanged.
+!!
+!!     col is an integer variable.
+!!       On entry col is the actual number of variable metric
+!!         corrections stored so far.
+!!       On exit col is unchanged.
+!!
+!!     head is an integer variable.
+!!       On entry head is the location of the first s-vector (or y-vector)
+!!         in S (or Y).
+!!       On exit col is unchanged.
+!!
+!!     p is a double precision working array of dimension 2m.
+!!       p will be used to store the vector p = W^(T)d.
+!!
+!!     c is a double precision working array of dimension 2m.
+!!       c will be used to store the vector c = W^(T)(xcp-x).
+!!
+!!     wbp is a double precision working array of dimension 2m.
+!!       wbp will be used to store the row of W corresponding
+!!         to a breakpoint.
+!!
+!!     v is a double precision working array of dimension 2m.
+!!
+!!     nint is an integer variable.
+!!       On exit nint records the number of quadratic segments explored
+!!         in searching for the GCP.
+!!
+!!     sg and yg are double precision arrays of dimension m.
+!!       On entry sg  and yg store S'g and Y'g correspondingly.
+!!       On exit they are unchanged. 
+!! 
+!!     iprint is an INTEGER variable that must be set by the user.
+!!       It controls the frequency and type of output generated:
+!!        iprint<0    no output is generated;
+!!        iprint=0    print only one line at the last iteration;
+!!        0<iprint<99 print also f and |proj g| every iprint iterations;
+!!        iprint=99   print details of every iteration except n-vectors;
+!!        iprint=100  print also the changes of active set and final x;
+!!        iprint>100  print details of every iteration including x and g;
+!!       When iprint > 0, the file iterate.dat will be created to
+!!                        summarize the iteration.
+!!
+!!     sbgnrm is a double precision variable.
+!!       On entry sbgnrm is the norm of the projected gradient at x.
+!!       On exit sbgnrm is unchanged.
+!!
+!!     info is an integer variable.
+!!       On entry info is 0.
+!!       On exit info = 0       for normal return,
+!!                    = nonzero for abnormal return when the the system
+!!                              used in routine bmv is singular.
+!!
+!!     Subprograms called:
+!! 
+!!       L-BFGS-B Library ... hpsolb, bmv.
+!!
+!!       Linpack ... dscal dcopy, daxpy.
+!!
+!!
+!!     References:
+!!
+!!       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
+!!       memory algorithm for bound constrained optimization'',
+!!       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
+!!
+!!       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: FORTRAN
+!!       Subroutines for Large Scale Bound Constrained Optimization''
+!!       Tech. Report, NAM-11, EECS Department, Northwestern University,
+!!       1994.
+!!
+!!       (Postscript files of these papers are available via anonymous
+!!        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       logical          xlower,xupper,bnded
@@ -1782,27 +1792,27 @@ c====================== The end of cauchy ==============================
      +                 ws(n, m), wy(n, m), sy(m, m), wt(m, m)
 
 c     ************
-c
-c     Subroutine cmprlb 
-c
-c       This subroutine computes r=-Z'B(xcp-xk)-Z'g by using 
-c         wa(2m+1)=W'(xcp-x) from subroutine cauchy.
-c
-c     Subprograms called:
-c
-c       L-BFGS-B Library ... bmv.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine cmprlb 
+!!
+!!       This subroutine computes r=-Z'B(xcp-xk)-Z'g by using 
+!!         wa(2m+1)=W'(xcp-x) from subroutine cauchy.
+!!
+!!     Subprograms called:
+!!
+!!       L-BFGS-B Library ... bmv.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
  
       integer          i,j,k,pointr
@@ -1847,22 +1857,22 @@ c======================= The end of cmprlb =============================
       double precision factr, l(n), u(n)
 
 c     ************
-c
-c     Subroutine errclb
-c
-c     This subroutine checks the validity of the input data.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine errclb
+!!
+!!     This subroutine checks the validity of the input data.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer          i
@@ -1900,27 +1910,6 @@ c                                    return
 
 c======================= The end of errclb =============================
 
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
       subroutine formk(n, nsub, ind, nenter, ileave, indx2, iupdat, 
      +                 updatd, wn, wn1, m, ws, wy, sy, theta, col,
      +                 head, info,
@@ -1934,126 +1923,126 @@ c======================= The end of errclb =============================
        integer          mpicom, myrank, nproc
 
 c     ************
-c
-c     Subroutine formk 
-c
-c     This subroutine forms  the LEL^T factorization of the indefinite
-c
-c       matrix    K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
-c                     [L_a -R_z           theta*S'AA'S ]
-c                                                    where E = [-I  0]
-c                                                              [ 0  I]
-c     The matrix K can be shown to be equal to the matrix M^[-1]N
-c       occurring in section 5.1 of [1], as well as to the matrix
-c       Mbar^[-1] Nbar in section 5.3.
-c
-c     n is an integer variable.
-c       On entry n is the dimension of the problem.
-c       On exit n is unchanged.
-c
-c     nsub is an integer variable
-c       On entry nsub is the number of subspace variables in free set.
-c       On exit nsub is not changed.
-c
-c     ind is an integer array of dimension nsub.
-c       On entry ind specifies the indices of subspace variables.
-c       On exit ind is unchanged. 
-c
-c     nenter is an integer variable.
-c       On entry nenter is the number of variables entering the 
-c         free set.
-c       On exit nenter is unchanged. 
-c
-c     ileave is an integer variable.
-c       On entry indx2(ileave),...,indx2(n) are the variables leaving
-c         the free set.
-c       On exit ileave is unchanged. 
-c
-c     indx2 is an integer array of dimension n.
-c       On entry indx2(1),...,indx2(nenter) are the variables entering
-c         the free set, while indx2(ileave),...,indx2(n) are the
-c         variables leaving the free set.
-c       On exit indx2 is unchanged. 
-c
-c     iupdat is an integer variable.
-c       On entry iupdat is the total number of BFGS updates made so far.
-c       On exit iupdat is unchanged. 
-c
-c     updatd is a logical variable.
-c       On entry 'updatd' is true if the L-BFGS matrix is updatd.
-c       On exit 'updatd' is unchanged. 
-c
-c     wn is a double precision array of dimension 2m x 2m.
-c       On entry wn is unspecified.
-c       On exit the upper triangle of wn stores the LEL^T factorization
-c         of the 2*col x 2*col indefinite matrix
-c                     [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
-c                     [L_a -R_z           theta*S'AA'S ]
-c
-c     wn1 is a double precision array of dimension 2m x 2m.
-c       On entry wn1 stores the lower triangular part of 
-c                     [Y' ZZ'Y   L_a'+R_z']
-c                     [L_a+R_z   S'AA'S   ]
-c         in the previous iteration.
-c       On exit wn1 stores the corresponding updated matrices.
-c       The purpose of wn1 is just to store these inner products
-c       so they can be easily updated and inserted into wn.
-c
-c     m is an integer variable.
-c       On entry m is the maximum number of variable metric corrections
-c         used to define the limited memory matrix.
-c       On exit m is unchanged.
-c
-c     ws, wy, sy, and wtyy are double precision arrays;
-c     theta is a double precision variable;
-c     col is an integer variable;
-c     head is an integer variable.
-c       On entry they store the information defining the
-c                                          limited memory BFGS matrix:
-c         ws(n,m) stores S, a set of s-vectors;
-c         wy(n,m) stores Y, a set of y-vectors;
-c         sy(m,m) stores S'Y;
-c         wtyy(m,m) stores the Cholesky factorization
-c                                   of (theta*S'S+LD^(-1)L')
-c         theta is the scaling factor specifying B_0 = theta I;
-c         col is the number of variable metric corrections stored;
-c         head is the location of the 1st s- (or y-) vector in S (or Y).
-c       On exit they are unchanged.
-c
-c     info is an integer variable.
-c       On entry info is unspecified.
-c       On exit info =  0 for normal return;
-c                    = -1 when the 1st Cholesky factorization failed;
-c                    = -2 when the 2st Cholesky factorization failed.
-c
-c     Subprograms called:
-c
-c       Linpack ... dcopy, dpofa, dtrsl.
-c
-c
-c     References:
-c       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
-c       memory algorithm for bound constrained optimization'',
-c       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
-c
-c       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: a
-c       limited memory FORTRAN code for solving bound constrained
-c       optimization problems'', Tech. Report, NAM-11, EECS Department,
-c       Northwestern University, 1994.
-c
-c       (Postscript files of these papers are available via anonymous
-c        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine formk 
+!!
+!!     This subroutine forms  the LEL^T factorization of the indefinite
+!!
+!!       matrix    K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
+!!                     [L_a -R_z           theta*S'AA'S ]
+!!                                                    where E = [-I  0]
+!!                                                              [ 0  I]
+!!     The matrix K can be shown to be equal to the matrix M^[-1]N
+!!       occurring in section 5.1 of [1], as well as to the matrix
+!!       Mbar^[-1] Nbar in section 5.3.
+!!
+!!     n is an integer variable.
+!!       On entry n is the dimension of the problem.
+!!       On exit n is unchanged.
+!!
+!!     nsub is an integer variable
+!!       On entry nsub is the number of subspace variables in free set.
+!!       On exit nsub is not changed.
+!!
+!!     ind is an integer array of dimension nsub.
+!!       On entry ind specifies the indices of subspace variables.
+!!       On exit ind is unchanged. 
+!!
+!!     nenter is an integer variable.
+!!       On entry nenter is the number of variables entering the 
+!!         free set.
+!!       On exit nenter is unchanged. 
+!!
+!!     ileave is an integer variable.
+!!       On entry indx2(ileave),...,indx2(n) are the variables leaving
+!!         the free set.
+!!       On exit ileave is unchanged. 
+!!
+!!     indx2 is an integer array of dimension n.
+!!       On entry indx2(1),...,indx2(nenter) are the variables entering
+!!         the free set, while indx2(ileave),...,indx2(n) are the
+!!         variables leaving the free set.
+!!       On exit indx2 is unchanged. 
+!!
+!!     iupdat is an integer variable.
+!!       On entry iupdat is the total number of BFGS updates made so far.
+!!       On exit iupdat is unchanged. 
+!!
+!!     updatd is a logical variable.
+!!       On entry 'updatd' is true if the L-BFGS matrix is updatd.
+!!       On exit 'updatd' is unchanged. 
+!!
+!!     wn is a double precision array of dimension 2m x 2m.
+!!       On entry wn is unspecified.
+!!       On exit the upper triangle of wn stores the LEL^T factorization
+!!         of the 2*col x 2*col indefinite matrix
+!!                     [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
+!!                     [L_a -R_z           theta*S'AA'S ]
+!!
+!!     wn1 is a double precision array of dimension 2m x 2m.
+!!       On entry wn1 stores the lower triangular part of 
+!!                     [Y' ZZ'Y   L_a'+R_z']
+!!                     [L_a+R_z   S'AA'S   ]
+!!         in the previous iteration.
+!!       On exit wn1 stores the corresponding updated matrices.
+!!       The purpose of wn1 is just to store these inner products
+!!       so they can be easily updated and inserted into wn.
+!!
+!!     m is an integer variable.
+!!       On entry m is the maximum number of variable metric corrections
+!!         used to define the limited memory matrix.
+!!       On exit m is unchanged.
+!!
+!!     ws, wy, sy, and wtyy are double precision arrays;
+!!     theta is a double precision variable;
+!!     col is an integer variable;
+!!     head is an integer variable.
+!!       On entry they store the information defining the
+!!                                          limited memory BFGS matrix:
+!!         ws(n,m) stores S, a set of s-vectors;
+!!         wy(n,m) stores Y, a set of y-vectors;
+!!         sy(m,m) stores S'Y;
+!!         wtyy(m,m) stores the Cholesky factorization
+!!                                   of (theta*S'S+LD^(-1)L')
+!!         theta is the scaling factor specifying B_0 = theta I;
+!!         col is the number of variable metric corrections stored;
+!!         head is the location of the 1st s- (or y-) vector in S (or Y).
+!!       On exit they are unchanged.
+!!
+!!     info is an integer variable.
+!!       On entry info is unspecified.
+!!       On exit info =  0 for normal return;
+!!                    = -1 when the 1st Cholesky factorization failed;
+!!                    = -2 when the 2st Cholesky factorization failed.
+!!
+!!     Subprograms called:
+!!
+!!       Linpack ... dcopy, dpofa, dtrsl.
+!!
+!!
+!!     References:
+!!       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
+!!       memory algorithm for bound constrained optimization'',
+!!       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
+!!
+!!       [2] C. Zhu, R.H. Byrd, P. Lu, J. Nocedal, ``L-BFGS-B: a
+!!       limited memory FORTRAN code for solving bound constrained
+!!       optimization problems'', Tech. Report, NAM-11, EECS Department,
+!!       Northwestern University, 1994.
+!!
+!!       (Postscript files of these papers are available via anonymous
+!!        ftp to eecs.nwu.edu in the directory pub/lbfgs/lbfgs_bcm.)
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer          m2,ipntr,jpntr,iy,is,jy,js,is1,js1,k1,i,k,
@@ -2087,8 +2076,8 @@ c                                 shift old part of WN1.
   10        continue
          endif
 
-      rnksm(:,:) = 0.0
-      mpism(:,:) = 0.0
+      rnksm(:,:) = 0.0d0
+      mpism(:,:) = 0.0d0
  
 c          put new rows in blocks (1,1), (2,1) and (2,2).
          pbegin = 1
@@ -2160,12 +2149,12 @@ c             compute element i of column 'col' of R_z
 
         do j=1,2*m
          do i=1,2*m
-          if(rnksm(i,j).ne.0.0) wn1(i,j) = rnksm(i,j)
+          if(rnksm(i,j).ne.0.0d0) wn1(i,j) = rnksm(i,j)
          enddo
         enddo
 
-          rnksm(:,:) = 0.0
-          mpism(:,:) = 0.0
+          rnksm(:,:) = 0.0d0
+          mpism(:,:) = 0.0d0
 
  
 c       modify.e old parts in blocks (1,1) and (2,2) due to changes
@@ -2311,29 +2300,29 @@ c======================= The end of formk ==============================
       double precision theta, wt(m, m), sy(m, m), ss(m, m)
 
 c     ************
-c
-c     Subroutine formt
-c
-c       This subroutine forms the upper half of the pos. def. and symm.
-c         T = theta*SS + L*D^(-1)*L', stores T in the upper triangle
-c         of the array wt, and performs the Cholesky factorization of T
-c         to produce J*J', with J' stored in the upper triangle of wt.
-c
-c     Subprograms called:
-c
-c       Linpack ... dpofa.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine formt
+!!
+!!       This subroutine forms the upper half of the pos. def. and symm.
+!!         T = theta*SS + L*D^(-1)*L', stores T in the upper triangle
+!!         of the array wt, and performs the Cholesky factorization of T
+!!         to produce J*J', with J' stored in the upper triangle of wt.
+!!
+!!     Subprograms called:
+!!
+!!       Linpack ... dpofa.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer          i,j,k,k1
@@ -2381,41 +2370,41 @@ c======================= The end of formt ==============================
       logical wrk, updatd, cnstnd
 
 c     ************
-c
-c     Subroutine freev 
-c
-c     This subroutine counts the entering and leaving variables when
-c       iter > 0, and finds the index set of free and active variables
-c       at the GCP.
-c
-c     cnstnd is a logical variable indicating whether bounds are present
-c
-c     index is an integer array of dimension n
-c       for i=1,...,nfree, index(i) are the indices of free variables
-c       for i=nfree+1,...,n, index(i) are the indices of bound variables
-c       On entry after the first iteration, index gives 
-c         the free variables at the previous iteration.
-c       On exit it gives the free variables based on the determination
-c         in cauchy using the array iwhere.
-c
-c     indx2 is an integer array of dimension n
-c       On entry indx2 is unspecified.
-c       On exit with iter>0, indx2 indicates which variables
-c          have changed status since the previous iteration.
-c       For i= 1,...,nenter, indx2(i) have changed from bound to free.
-c       For i= ileave+1,...,n, indx2(i) have changed from free to bound.
-c 
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine freev 
+!!
+!!     This subroutine counts the entering and leaving variables when
+!!       iter > 0, and finds the index set of free and active variables
+!!       at the GCP.
+!!
+!!     cnstnd is a logical variable indicating whether bounds are present
+!!
+!!     index is an integer array of dimension n
+!!       for i=1,...,nfree, index(i) are the indices of free variables
+!!       for i=nfree+1,...,n, index(i) are the indices of bound variables
+!!       On entry after the first iteration, index gives 
+!!         the free variables at the previous iteration.
+!!       On exit it gives the free variables based on the determination
+!!         in cauchy using the array iwhere.
+!!
+!!     indx2 is an integer array of dimension n
+!!       On entry indx2 is unspecified.
+!!       On exit with iter>0, indx2 indicates which variables
+!!          have changed status since the previous iteration.
+!!       For i= 1,...,nenter, indx2(i) have changed from bound to free.
+!!       For i= ileave+1,...,n, indx2(i) have changed from free to bound.
+!! 
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
  
       integer iact,i,k
@@ -2474,45 +2463,45 @@ c======================= The end of freev ==============================
       double precision t(n)
   
 c     ************
-c
-c     Subroutine hpsolb 
-c
-c     This subroutine sorts out the least element of t, and puts the
-c       remaining elements of t in a heap.
-c 
-c     n is an integer variable.
-c       On entry n is the dimension of the arrays t and iorder.
-c       On exit n is unchanged.
-c
-c     t is a double precision array of dimension n.
-c       On entry t stores the elements to be sorted,
-c       On exit t(n) stores the least elements of t, and t(1) to t(n-1)
-c         stores the remaining elements in the form of a heap.
-c
-c     iorder is an integer array of dimension n.
-c       On entry iorder(i) is the index of t(i).
-c       On exit iorder(i) is still the index of t(i), but iorder may be
-c         permuted in accordance with t.
-c
-c     iheap is an integer variable specifying the task.
-c       On entry iheap should be set as follows:
-c         iheap .eq. 0 if t(1) to t(n) is not in the form of a heap,
-c         iheap .ne. 0 if otherwise.
-c       On exit iheap is unchanged.
-c
-c
-c     References:
-c       Algorithm 232 of CACM (J. W. J. Williams): HEAPSORT.
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
+!!
+!>     Subroutine hpsolb 
+!!
+!!     This subroutine sorts out the least element of t, and puts the
+!!       remaining elements of t in a heap.
+!! 
+!!     n is an integer variable.
+!!       On entry n is the dimension of the arrays t and iorder.
+!!       On exit n is unchanged.
+!!
+!!     t is a double precision array of dimension n.
+!!       On entry t stores the elements to be sorted,
+!!       On exit t(n) stores the least elements of t, and t(1) to t(n-1)
+!!         stores the remaining elements in the form of a heap.
+!!
+!!     iorder is an integer array of dimension n.
+!!       On entry iorder(i) is the index of t(i).
+!!       On exit iorder(i) is still the index of t(i), but iorder may be
+!!         permuted in accordance with t.
+!!
+!!     iheap is an integer variable specifying the task.
+!!       On entry iheap should be set as follows:
+!!         iheap .eq. 0 if t(1) to t(n) is not in the form of a heap,
+!!         iheap .ne. 0 if otherwise.
+!!       On exit iheap is unchanged.
+!!
+!!
+!!     References:
+!!       Algorithm 232 of CACM (J. W. J. Williams): HEAPSORT.
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
 c     ************
   
       integer          i,j,k,indxin,indxou
@@ -2581,32 +2570,12 @@ c     Put the least member in t(n).
 
 c====================== The end of hpsolb ==============================
 
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
       subroutine lnsrlb(n, l, u, nbd, x, f, fold, gd, gdold, g, d, r, t,
      +                  z, stp, dnorm, dtd, xstep, stpmx, iter, ifun,
      +                  iback, nfgv, info, task, boxed, cnstnd, csave,
      +                  isave, dsave,
      +                 mpicom, myrank, nproc)
+
 
       character*60     task, csave
       logical          boxed, cnstnd
@@ -2617,30 +2586,30 @@ c====================== The end of hpsolb ==============================
      +                 z(n), dsave(13)
       integer          mpicom, myrank, nproc
 c     **********
-c
-c     Subroutine lnsrlb
-c
-c     This subroutine calls subroutine dcsrch from the Minpack2 library
-c       to perform the line search.  Subroutine dscrch is safeguarded so
-c       that all trial points lie within the feasible region.
-c
-c     Subprograms called:
-c
-c       Minpack2 Library ... dcsrch.
-c
-c       Linpack ... dtrsl, ddot.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>c     Subroutine lnsrlb
+!!
+!!     This subroutine calls subroutine dcsrch from the Minpack2 library
+!!       to perform the line search.  Subroutine dscrch is safeguarded so
+!!       that all trial points lie within the feasible region.
+!!
+!!     Subprograms called:
+!!
+!!       Minpack2 Library ... dcsrch.
+!!
+!!       Linpack ... dtrsl, ddot.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     **********
 
       integer          i
@@ -2738,27 +2707,6 @@ c                               Line search is impossible.
 
 c======================= The end of lnsrlb =============================
 
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
       subroutine matupd(n, m, ws, wy, sy, ss, d, r, itail, 
      +                  iupdat, col, head, theta, rr, dr, stp, dtd,
      +                 mpicom, myrank, nproc)
@@ -2769,27 +2717,27 @@ c======================= The end of lnsrlb =============================
       integer          mpicom, myrank, nproc
 
 c     ************
-c
-c     Subroutine matupd
-c
-c       This subroutine updates matrices WS and WY, and forms the
-c         middle matrix in B.
-c
-c     Subprograms called:
-c
-c       Linpack ... dcopy, ddot.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine matupd
+!!
+!!       This subroutine updates matrices WS and WY, and forms the
+!!         middle matrix in B.
+!!
+!!     Subprograms called:
+!!
+!!       Linpack ... dcopy, ddot.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
  
       integer          j,pointr
@@ -2858,24 +2806,24 @@ c======================= The end of matupd =============================
       double precision epsmch, x(n), l(n), u(n)
 
 c     ************
-c
-c     Subroutine prn1lb
-c
-c     This subroutine prints the input data, initial point, upper and
-c       lower bounds of each variable, machine precision, as well as 
-c       the headings of the output.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine prn1lb
+!!
+!!     This subroutine prints the input data, initial point, upper and
+!!       lower bounds of each variable, machine precision, as well as 
+!!       the headings of the output.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer i
@@ -2932,23 +2880,23 @@ c======================= The end of prn1lb =============================
       double precision f, sbgnrm, stp, xstep, x(n), g(n)
 
 c     ************
-c
-c     Subroutine prn2lb
-c
-c     This subroutine prints out new information after a successful
-c       line search. 
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine prn2lb
+!!
+!!     This subroutine prints out new information after a successful
+!!       line search. 
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer i,imod
@@ -3006,24 +2954,24 @@ c======================= The end of prn2lb =============================
      +                 lnscht, x(n)
 
 c     ************
-c
-c     Subroutine prn3lb
-c
-c     This subroutine prints out information when either a built-in
-c       convergence test is satisfied or when an error message is
-c       generated.
-c       
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine prn3lb
+!!
+!!     This subroutine prints out information when either a built-in
+!!       convergence test is satisfied or when an error message is
+!!       generated.
+!!       
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer i
@@ -3126,27 +3074,6 @@ c     ************
 
 c======================= The end of prn3lb =============================
 
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
       subroutine projgr(n, l, u, nbd, x, g, sbgnrm,
      +                 mpicom, myrank, nproc)
 
@@ -3155,23 +3082,23 @@ c======================= The end of prn3lb =============================
       integer     mpicom, myrank, nproc
 
 c     ************
-c
-c     Subroutine projgr
-c
-c     This subroutine computes the infinity norm of the projected
-c       gradient.
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine projgr
+!!
+!!     This subroutine computes the infinity norm of the projected
+!!       gradient.
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer i
@@ -3214,7 +3141,7 @@ c     ************
       endif
 
 !sd
-            sbgnrm = sqrt(sbgnrm)
+            sbgnrm = dsqrt(sbgnrm)
 !sd
 
       return
@@ -3222,27 +3149,6 @@ c     ************
       end
 
 c======================= The end of projgr =============================
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
 
       subroutine subsm(n, m, nsub, ind, l, u, nbd, x, d, ws, wy, theta, 
      +                 col, head, iword, wv, wn, iprint, info,
@@ -3257,151 +3163,151 @@ c======================= The end of projgr =============================
       integer          mpicom, myrank, nproc
 
 c     ************
-c
-c     Subroutine subsm
-c
-c     Given xcp, l, u, r, an index set that specifies
-c	the active set at xcp, and an l-BFGS matrix B 
-c	(in terms of WY, WS, SY, WT, head, col, and theta), 
-c	this subroutine computes an approximate solution
-c	of the subspace problem
-c
-c     	(P)   min Q(x) = r'(x-xcp) + 1/2 (x-xcp)' B (x-xcp)
-c
-c             subject to l<=x<=u
-c	  	        x_i=xcp_i for all i in A(xcp)
-c	              
-c	along the subspace unconstrained Newton direction 
-c	
-c	   d = -(Z'BZ)^(-1) r.
-c
-c       The formula for the Newton direction, given the L-BFGS matrix
-c       and the Sherman-Morrison formula, is
-c
-c	   d = (1/theta)r + (1/theta*2) Z'WK^(-1)W'Z r.
-c 
-c       where
-c                 K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
-c                     [L_a -R_z           theta*S'AA'S ]
-c
-c     Note that this procedure for computing d differs 
-c     from that described in [1]. One can show that the matrix K is
-c     equal to the matrix M^[-1]N in that paper.
-c
-c     n is an integer variable.
-c       On entry n is the dimension of the problem.
-c       On exit n is unchanged.
-c
-c     m is an integer variable.
-c       On entry m is the maximum number of variable metric corrections
-c         used to define the limited memory matrix.
-c       On exit m is unchanged.
-c
-c     nsub is an integer variable.
-c       On entry nsub is the number of free variables.
-c       On exit nsub is unchanged.
-c
-c     ind is an integer array of dimension nsub.
-c       On entry ind specifies the coordinate indices of free variables.
-c       On exit ind is unchanged.
-c
-c     l is a double precision array of dimension n.
-c       On entry l is the lower bound of x.
-c       On exit l is unchanged.
-c
-c     u is a double precision array of dimension n.
-c       On entry u is the upper bound of x.
-c       On exit u is unchanged.
-c
-c     nbd is a integer array of dimension n.
-c       On entry nbd represents the type of bounds imposed on the
-c         variables, and must be specified as follows:
-c         nbd(i)=0 if x(i) is unbounded,
-c                1 if x(i) has only a lower bound,
-c                2 if x(i) has both lower and upper bounds, and
-c                3 if x(i) has only an upper bound.
-c       On exit nbd is unchanged.
-c
-c     x is a double precision array of dimension n.
-c       On entry x specifies the Cauchy point xcp. 
-c       On exit x(i) is the minimizer of Q over the subspace of
-c                                                        free variables. 
-c
-c     d is a double precision array of dimension n.
-c       On entry d is the reduced gradient of Q at xcp.
-c       On exit d is the Newton direction of Q. 
-c
-c     ws and wy are double precision arrays;
-c     theta is a double precision variable;
-c     col is an integer variable;
-c     head is an integer variable.
-c       On entry they store the information defining the
-c                                          limited memory BFGS matrix:
-c         ws(n,m) stores S, a set of s-vectors;
-c         wy(n,m) stores Y, a set of y-vectors;
-c         theta is the scaling factor specifying B_0 = theta I;
-c         col is the number of variable metric corrections stored;
-c         head is the location of the 1st s- (or y-) vector in S (or Y).
-c       On exit they are unchanged.
-c
-c     iword is an integer variable.
-c       On entry iword is unspecified.
-c       On exit iword specifies the status of the subspace solution.
-c         iword = 0 if the solution is in the box,
-c                 1 if some bound is encountered.
-c
-c     wv is a double precision working array of dimension 2m.
-c
-c     wn is a double precision array of dimension 2m x 2m.
-c       On entry the upper triangle of wn stores the LEL^T factorization
-c         of the indefinite matrix
-c
-c              K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
-c                  [L_a -R_z           theta*S'AA'S ]
-c                                                    where E = [-I  0]
-c                                                              [ 0  I]
-c       On exit wn is unchanged.
-c
-c     iprint is an INTEGER variable that must be set by the user.
-c       It controls the frequency and type of output generated:
-c        iprint<0    no output is generated;
-c        iprint=0    print only one line at the last iteration;
-c        0<iprint<99 print also f and |proj g| every iprint iterations;
-c        iprint=99   print details of every iteration except n-vectors;
-c        iprint=100  print also the changes of active set and final x;
-c        iprint>100  print details of every iteration including x and g;
-c       When iprint > 0, the file iterate.dat will be created to
-c                        summarize the iteration.
-c
-c     info is an integer variable.
-c       On entry info is unspecified.
-c       On exit info = 0       for normal return,
-c                    = nonzero for abnormal return 
-c                                  when the matrix K is ill-conditioned.
-c
-c     Subprograms called:
-c
-c       Linpack dtrsl.
-c
-c
-c     References:
-c
-c       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
-c       memory algorithm for bound constrained optimization'',
-c       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
-c
-c
-c
-c                           *  *  *
-c
-c     NEOS, November 1994. (Latest revision June 1996.)
-c     Optimization Technology Center.
-c     Argonne National Laboratory and Northwestern University.
-c     Written by
-c                        Ciyou Zhu
-c     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
-c
-c
+!!
+!>     Subroutine subsm
+!!
+!!     Given xcp, l, u, r, an index set that specifies
+!!	the active set at xcp, and an l-BFGS matrix B 
+!!	(in terms of WY, WS, SY, WT, head, col, and theta), 
+!!	this subroutine computes an approximate solution
+!!	of the subspace problem
+!!
+!!     	(P)   min Q(x) = r'(x-xcp) + 1/2 (x-xcp)' B (x-xcp)
+!!
+!!             subject to l<=x<=u
+!!	  	        x_i=xcp_i for all i in A(xcp)
+!!	              
+!!	along the subspace unconstrained Newton direction 
+!!	
+!!	   d = -(Z'BZ)^(-1) r.
+!!
+!!       The formula for the Newton direction, given the L-BFGS matrix
+!!       and the Sherman-Morrison formula, is
+!!
+!!	   d = (1/theta)r + (1/theta*2) Z'WK^(-1)W'Z r.
+!! 
+!!       where
+!!                 K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
+!!                     [L_a -R_z           theta*S'AA'S ]
+!!
+!!     Note that this procedure for computing d differs 
+!!     from that described in [1]. One can show that the matrix K is
+!!     equal to the matrix M^[-1]N in that paper.
+!!
+!!     n is an integer variable.
+!!       On entry n is the dimension of the problem.
+!!       On exit n is unchanged.
+!!
+!!     m is an integer variable.
+!!       On entry m is the maximum number of variable metric corrections
+!!         used to define the limited memory matrix.
+!!       On exit m is unchanged.
+!!
+!!     nsub is an integer variable.
+!!       On entry nsub is the number of free variables.
+!!       On exit nsub is unchanged.
+!!
+!!     ind is an integer array of dimension nsub.
+!!       On entry ind specifies the coordinate indices of free variables.
+!!       On exit ind is unchanged.
+!!
+!!     l is a double precision array of dimension n.
+!!       On entry l is the lower bound of x.
+!!       On exit l is unchanged.
+!!
+!!     u is a double precision array of dimension n.
+!!       On entry u is the upper bound of x.
+!!       On exit u is unchanged.
+!!
+!!     nbd is a integer array of dimension n.
+!!       On entry nbd represents the type of bounds imposed on the
+!!         variables, and must be specified as follows:
+!!         nbd(i)=0 if x(i) is unbounded,
+!!                1 if x(i) has only a lower bound,
+!!                2 if x(i) has both lower and upper bounds, and
+!!                3 if x(i) has only an upper bound.
+!!       On exit nbd is unchanged.
+!!
+!!     x is a double precision array of dimension n.
+!!       On entry x specifies the Cauchy point xcp. 
+!!       On exit x(i) is the minimizer of Q over the subspace of
+!!                                                        free variables. 
+!!
+!!     d is a double precision array of dimension n.
+!!       On entry d is the reduced gradient of Q at xcp.
+!!       On exit d is the Newton direction of Q. 
+!!
+!!     ws and wy are double precision arrays;
+!!     theta is a double precision variable;
+!!     col is an integer variable;
+!!     head is an integer variable.
+!!       On entry they store the information defining the
+!!                                          limited memory BFGS matrix:
+!!         ws(n,m) stores S, a set of s-vectors;
+!!         wy(n,m) stores Y, a set of y-vectors;
+!!         theta is the scaling factor specifying B_0 = theta I;
+!!         col is the number of variable metric corrections stored;
+!!         head is the location of the 1st s- (or y-) vector in S (or Y).
+!!       On exit they are unchanged.
+!!
+!!     iword is an integer variable.
+!!       On entry iword is unspecified.
+!!       On exit iword specifies the status of the subspace solution.
+!!         iword = 0 if the solution is in the box,
+!!                 1 if some bound is encountered.
+!!
+!!     wv is a double precision working array of dimension 2m.
+!!
+!!     wn is a double precision array of dimension 2m x 2m.
+!!       On entry the upper triangle of wn stores the LEL^T factorization
+!!         of the indefinite matrix
+!!
+!!              K = [-D -Y'ZZ'Y/theta     L_a'-R_z'  ]
+!!                  [L_a -R_z           theta*S'AA'S ]
+!!                                                    where E = [-I  0]
+!!                                                              [ 0  I]
+!!       On exit wn is unchanged.
+!!
+!!     iprint is an INTEGER variable that must be set by the user.
+!!       It controls the frequency and type of output generated:
+!!        iprint<0    no output is generated;
+!!        iprint=0    print only one line at the last iteration;
+!!        0<iprint<99 print also f and |proj g| every iprint iterations;
+!!        iprint=99   print details of every iteration except n-vectors;
+!!        iprint=100  print also the changes of active set and final x;
+!!        iprint>100  print details of every iteration including x and g;
+!!       When iprint > 0, the file iterate.dat will be created to
+!!                        summarize the iteration.
+!!
+!!     info is an integer variable.
+!!       On entry info is unspecified.
+!!       On exit info = 0       for normal return,
+!!                    = nonzero for abnormal return 
+!!                                  when the matrix K is ill-conditioned.
+!!
+!!     Subprograms called:
+!!
+!!       Linpack dtrsl.
+!!
+!!
+!!     References:
+!!
+!!       [1] R. H. Byrd, P. Lu, J. Nocedal and C. Zhu, ``A limited
+!!       memory algorithm for bound constrained optimization'',
+!!       SIAM J. Scientific Computing 16 (1995), no. 5, pp. 1190--1208.
+!!
+!!
+!!
+!!                           *  *  *
+!!
+!!     NEOS, November 1994. (Latest revision June 1996.)
+!!     Optimization Technology Center.
+!!     Argonne National Laboratory and Northwestern University.
+!!     Written by
+!!                        Ciyou Zhu
+!!     in collaboration with R.H. Byrd, P. Lu-Chen and J. Nocedal.
+!!
+!!
 c     ************
 
       integer          pointr,m2,col2,ibd,jy,js,i,j,k
@@ -3552,136 +3458,136 @@ c====================== The end of subsm ===============================
       double precision f,g,stp,ftol,gtol,xtol,stpmin,stpmax
       double precision dsave(13)
 c     **********
-c
-c     Subroutine dcsrch
-c
-c     This subroutine finds a step that satisfies a sufficient
-c     decrease condition and a curvature condition.
-c
-c     Each call of the subroutine updates an interval with 
-c     endpoints stx and sty. The interval is initially chosen 
-c     so that it contains a minimizer of the modified function
-c
-c           psi(stp) = f(stp) - f(0) - ftol*stp*f'(0).
-c
-c     If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
-c     interval is chosen so that it contains a minimizer of f. 
-c
-c     The algorithm is designed to find a step that satisfies 
-c     the sufficient decrease condition 
-c
-c           f(stp) <= f(0) + ftol*stp*f'(0),
-c
-c     and the curvature condition
-c
-c           abs(f'(stp)) <= gtol*abs(f'(0)).
-c
-c     If ftol is less than gtol and if, for example, the function
-c     is bounded below, then there is always a step which satisfies
-c     both conditions. 
-c
-c     If no step can be found that satisfies both conditions, then 
-c     the algorithm stops with a warning. In this case stp only 
-c     satisfies the sufficient decrease condition.
-c
-c     A typical invocation of dcsrch has the following outline:
-c
-c     task = 'START'
-c  10 continue
-c        call dcsrch( ... )
-c        if (task .eq. 'FG') then
-c           Evaluate the function and the gradient at stp 
-c           goto 10
-c           end if
-c
-c     NOTE: The user must no alter work arrays between calls.
-c
-c     The subroutine statement is
-c
-c        subroutine dcsrch(f,g,stp,ftol,gtol,xtol,stpmin,stpmax,
-c                          task,isave,dsave)
-c     where
-c
-c       f is a double precision variable.
-c         On initial entry f is the value of the function at 0.
-c            On subsequent entries f is the value of the 
-c            function at stp.
-c         On exit f is the value of the function at stp.
-c
-c	g is a double precision variable.
-c         On initial entry g is the derivative of the function at 0.
-c            On subsequent entries g is the derivative of the 
-c            function at stp.
-c         On exit g is the derivative of the function at stp.
-c
-c	stp is a double precision variable. 
-c         On entry stp is the current estimate of a satisfactory 
-c            step. On initial entry, a positive initial estimate 
-c            must be provided. 
-c         On exit stp is the current estimate of a satisfactory step
-c            if task = 'FG'. If task = 'CONV' then stp satisfies
-c            the sufficient decrease and curvature condition.
-c
-c       ftol is a double precision variable.
-c         On entry ftol specifies a nonnegative tolerance for the 
-c            sufficient decrease condition.
-c         On exit ftol is unchanged.
-c
-c       gtol is a double precision variable.
-c         On entry gtol specifies a nonnegative tolerance for the 
-c            curvature condition. 
-c         On exit gtol is unchanged.
-c
-c	xtol is a double precision variable.
-c         On entry xtol specifies a nonnegative relative tolerance
-c            for an acceptable step. The subroutine exits with a
-c            warning if the relative difference between sty and stx
-c            is less than xtol.
-c         On exit xtol is unchanged.
-c
-c	stpmin is a double precision variable.
-c         On entry stpmin is a nonnegative lower bound for the step.
-c         On exit stpmin is unchanged.
-c
-c	stpmax is a double precision variable.
-c         On entry stpmax is a nonnegative upper bound for the step.
-c         On exit stpmax is unchanged.
-c
-c       task is a character variable of length at least 60.
-c         On initial entry task must be set to 'START'.
-c         On exit task indicates the required action:
-c
-c            If task(1:2) = 'FG' then evaluate the function and 
-c            derivative at stp and call dcsrch again.
-c
-c            If task(1:4) = 'CONV' then the search is successful.
-c
-c            If task(1:4) = 'WARN' then the subroutine is not able
-c            to satisfy the convergence conditions. The exit value of
-c            stp contains the best point found during the search.
-c
-c            If task(1:5) = 'ERROR' then there is an error in the
-c            input arguments.
-c
-c         On exit with convergence, a warning or an error, the
-c            variable task contains additional information.
-c
-c       isave is an integer work array of dimension 2.
-c         
-c       dsave is a double precision work array of dimension 13.
-c
-c     Subprograms called
-c
-c	MINPACK-2 ... dcstep
-c
-c     MINPACK-1 Project. June 1983.
-c     Argonne National Laboratory. 
-c     Jorge J. More' and David J. Thuente.
-c
-c     MINPACK-2 Project. October 1993.
-c     Argonne National Laboratory and University of Minnesota. 
-c     Brett M. Averick, Richard G. Carter, and Jorge J. More'. 
-c
+!!
+!>     Subroutine dcsrch
+!!
+!!     This subroutine finds a step that satisfies a sufficient
+!!     decrease condition and a curvature condition.
+!!
+!!     Each call of the subroutine updates an interval with 
+!!     endpoints stx and sty. The interval is initially chosen 
+!!     so that it contains a minimizer of the modified function
+!!
+!!           psi(stp) = f(stp) - f(0) - ftol*stp*f'(0).
+!!
+!!     If psi(stp) <= 0 and f'(stp) >= 0 for some step, then the
+!!     interval is chosen so that it contains a minimizer of f. 
+!!
+!!     The algorithm is designed to find a step that satisfies 
+!!     the sufficient decrease condition 
+!!
+!!           f(stp) <= f(0) + ftol*stp*f'(0),
+!!
+!!     and the curvature condition
+!!
+!!           abs(f'(stp)) <= gtol*abs(f'(0)).
+!!
+!!     If ftol is less than gtol and if, for example, the function
+!!     is bounded below, then there is always a step which satisfies
+!!     both conditions. 
+!!
+!!     If no step can be found that satisfies both conditions, then 
+!!     the algorithm stops with a warning. In this case stp only 
+!!     satisfies the sufficient decrease condition.
+!!
+!!     A typical invocation of dcsrch has the following outline:
+!!
+!!     task = 'START'
+!!  10 continue
+!!        call dcsrch( ... )
+!!        if (task .eq. 'FG') then
+!!           Evaluate the function and the gradient at stp 
+!!           goto 10
+!!           end if
+!!
+!!     NOTE: The user must no alter work arrays between calls.
+!!
+!!     The subroutine statement is
+!!
+!!        subroutine dcsrch(f,g,stp,ftol,gtol,xtol,stpmin,stpmax,
+!!                          task,isave,dsave)
+!!     where
+!!
+!!       f is a double precision variable.
+!!         On initial entry f is the value of the function at 0.
+!!            On subsequent entries f is the value of the 
+!!            function at stp.
+!!         On exit f is the value of the function at stp.
+!!
+!!	g is a double precision variable.
+!!         On initial entry g is the derivative of the function at 0.
+!!            On subsequent entries g is the derivative of the 
+!!            function at stp.
+!!         On exit g is the derivative of the function at stp.
+!!
+!!	stp is a double precision variable. 
+!!         On entry stp is the current estimate of a satisfactory 
+!!            step. On initial entry, a positive initial estimate 
+!!            must be provided. 
+!!         On exit stp is the current estimate of a satisfactory step
+!!            if task = 'FG'. If task = 'CONV' then stp satisfies
+!!            the sufficient decrease and curvature condition.
+!!
+!!       ftol is a double precision variable.
+!!         On entry ftol specifies a nonnegative tolerance for the 
+!!            sufficient decrease condition.
+!!         On exit ftol is unchanged.
+!!
+!!       gtol is a double precision variable.
+!!         On entry gtol specifies a nonnegative tolerance for the 
+!!            curvature condition. 
+!!         On exit gtol is unchanged.
+!!
+!!	xtol is a double precision variable.
+!!         On entry xtol specifies a nonnegative relative tolerance
+!!            for an acceptable step. The subroutine exits with a
+!!            warning if the relative difference between sty and stx
+!!            is less than xtol.
+!!         On exit xtol is unchanged.
+!!
+!!	stpmin is a double precision variable.
+!!         On entry stpmin is a nonnegative lower bound for the step.
+!!         On exit stpmin is unchanged.
+!!
+!!	stpmax is a double precision variable.
+!!         On entry stpmax is a nonnegative upper bound for the step.
+!!         On exit stpmax is unchanged.
+!!
+!!       task is a character variable of length at least 60.
+!!         On initial entry task must be set to 'START'.
+!!         On exit task indicates the required action:
+!!
+!!            If task(1:2) = 'FG' then evaluate the function and 
+!!            derivative at stp and call dcsrch again.
+!!
+!!            If task(1:4) = 'CONV' then the search is successful.
+!!
+!!            If task(1:4) = 'WARN' then the subroutine is not able
+!!            to satisfy the convergence conditions. The exit value of
+!!            stp contains the best point found during the search.
+!!
+!!            If task(1:5) = 'ERROR' then there is an error in the
+!!            input arguments.
+!!
+!!         On exit with convergence, a warning or an error, the
+!!            variable task contains additional information.
+!!
+!!       isave is an integer work array of dimension 2.
+!!         
+!!       dsave is a double precision work array of dimension 13.
+!!
+!!     Subprograms called
+!!
+!!	MINPACK-2 ... dcstep
+!!
+!!     MINPACK-1 Project. June 1983.
+!!     Argonne National Laboratory. 
+!!     Jorge J. More' and David J. Thuente.
+!!
+!!     MINPACK-2 Project. October 1993.
+!!     Argonne National Laboratory and University of Minnesota. 
+!!     Brett M. Averick, Richard G. Carter, and Jorge J. More'. 
+!!
 c     **********
       double precision zero,p5,p66
       parameter(zero=0.0d0,p5=0.5d0,p66=0.66d0)
@@ -3896,96 +3802,96 @@ c====================== The end of dcsrch ==============================
       logical brackt
       double precision stx,fx,dx,sty,fy,dy,stp,fp,dp,stpmin,stpmax
 c     **********
-c
-c     Subroutine dcstep
-c
-c     This subroutine computes a safeguarded step for a search
-c     procedure and updates an interval that contains a step that
-c     satisfies a sufficient decrease and a curvature condition.
-c
-c     The parameter stx contains the step with the least function
-c     value. If brackt is set to .true. then a minimizer has
-c     been bracketed in an interval with endpoints stx and sty.
-c     The parameter stp contains the current step. 
-c     The subroutine assumes that if brackt is set to .true. then
-c
-c           min(stx,sty) < stp < max(stx,sty),
-c
-c     and that the derivative at stx is negative in the direction 
-c     of the step.
-c
-c     The subroutine statement is
-c
-c       subroutine dcstep(stx,fx,dx,sty,fy,dy,stp,fp,dp,brackt,
-c                         stpmin,stpmax)
-c
-c     where
-c
-c       stx is a double precision variable.
-c         On entry stx is the best step obtained so far and is an
-c            endpoint of the interval that contains the minimizer. 
-c         On exit stx is the updated best step.
-c
-c       fx is a double precision variable.
-c         On entry fx is the function at stx.
-c         On exit fx is the function at stx.
-c
-c       dx is a double precision variable.
-c         On entry dx is the derivative of the function at 
-c            stx. The derivative must be negative in the direction of 
-c            the step, that is, dx and stp - stx must have opposite 
-c            signs.
-c         On exit dx is the derivative of the function at stx.
-c
-c       sty is a double precision variable.
-c         On entry sty is the second endpoint of the interval that 
-c            contains the minimizer.
-c         On exit sty is the updated endpoint of the interval that 
-c            contains the minimizer.
-c
-c       fy is a double precision variable.
-c         On entry fy is the function at sty.
-c         On exit fy is the function at sty.
-c
-c       dy is a double precision variable.
-c         On entry dy is the derivative of the function at sty.
-c         On exit dy is the derivative of the function at the exit sty.
-c
-c       stp is a double precision variable.
-c         On entry stp is the current step. If brackt is set to .true.
-c            then on input stp must be between stx and sty. 
-c         On exit stp is a new trial step.
-c
-c       fp is a double precision variable.
-c         On entry fp is the function at stp
-c         On exit fp is unchanged.
-c
-c       dp is a double precision variable.
-c         On entry dp is the the derivative of the function at stp.
-c         On exit dp is unchanged.
-c
-c       brackt is an logical variable.
-c         On entry brackt specifies if a minimizer has been bracketed.
-c            Initially brackt must be set to .false.
-c         On exit brackt specifies if a minimizer has been bracketed.
-c            When a minimizer is bracketed brackt is set to .true.
-c
-c       stpmin is a double precision variable.
-c         On entry stpmin is a lower bound for the step.
-c         On exit stpmin is unchanged.
-c
-c       stpmax is a double precision variable.
-c         On entry stpmax is an upper bound for the step.
-c         On exit stpmax is unchanged.
-c
-c     MINPACK-1 Project. June 1983
-c     Argonne National Laboratory. 
-c     Jorge J. More' and David J. Thuente.
-c
-c     MINPACK-2 Project. October 1993.
-c     Argonne National Laboratory and University of Minnesota. 
-c     Brett M. Averick and Jorge J. More'.
-c
+!!
+!>     Subroutine dcstep
+!!
+!!     This subroutine computes a safeguarded step for a search
+!!     procedure and updates an interval that contains a step that
+!!     satisfies a sufficient decrease and a curvature condition.
+!!
+!!     The parameter stx contains the step with the least function
+!!     value. If brackt is set to .true. then a minimizer has
+!!     been bracketed in an interval with endpoints stx and sty.
+!!     The parameter stp contains the current step. 
+!!     The subroutine assumes that if brackt is set to .true. then
+!!
+!!           min(stx,sty) < stp < max(stx,sty),
+!!
+!!     and that the derivative at stx is negative in the direction 
+!!     of the step.
+!!
+!!     The subroutine statement is
+!!
+!!       subroutine dcstep(stx,fx,dx,sty,fy,dy,stp,fp,dp,brackt,
+!!                         stpmin,stpmax)
+!!
+!!     where
+!!
+!!       stx is a double precision variable.
+!!         On entry stx is the best step obtained so far and is an
+!!            endpoint of the interval that contains the minimizer. 
+!!         On exit stx is the updated best step.
+!!
+!!       fx is a double precision variable.
+!!         On entry fx is the function at stx.
+!!         On exit fx is the function at stx.
+!!
+!!       dx is a double precision variable.
+!!         On entry dx is the derivative of the function at 
+!!            stx. The derivative must be negative in the direction of 
+!!            the step, that is, dx and stp - stx must have opposite 
+!!            signs.
+!!         On exit dx is the derivative of the function at stx.
+!!
+!!       sty is a double precision variable.
+!!         On entry sty is the second endpoint of the interval that 
+!!            contains the minimizer.
+!!         On exit sty is the updated endpoint of the interval that 
+!!            contains the minimizer.
+!!
+!!       fy is a double precision variable.
+!!         On entry fy is the function at sty.
+!!         On exit fy is the function at sty.
+!!
+!!       dy is a double precision variable.
+!!         On entry dy is the derivative of the function at sty.
+!!         On exit dy is the derivative of the function at the exit sty.
+!!
+!!       stp is a double precision variable.
+!!         On entry stp is the current step. If brackt is set to .true.
+!!            then on input stp must be between stx and sty. 
+!!         On exit stp is a new trial step.
+!!
+!!       fp is a double precision variable.
+!!         On entry fp is the function at stp
+!!         On exit fp is unchanged.
+!!
+!!       dp is a double precision variable.
+!!         On entry dp is the the derivative of the function at stp.
+!!         On exit dp is unchanged.
+!!
+!!       brackt is an logical variable.
+!!         On entry brackt specifies if a minimizer has been bracketed.
+!!            Initially brackt must be set to .false.
+!!         On exit brackt specifies if a minimizer has been bracketed.
+!!            When a minimizer is bracketed brackt is set to .true.
+!!
+!!       stpmin is a double precision variable.
+!!         On entry stpmin is a lower bound for the step.
+!!         On exit stpmin is unchanged.
+!!
+!!       stpmax is a double precision variable.
+!!         On entry stpmax is an upper bound for the step.
+!!         On exit stpmax is unchanged.
+!!
+!!     MINPACK-1 Project. June 1983
+!!     Argonne National Laboratory. 
+!!     Jorge J. More' and David J. Thuente.
+!!
+!!     MINPACK-2 Project. October 1993.
+!!     Argonne National Laboratory and University of Minnesota. 
+!!     Brett M. Averick and Jorge J. More'.
+!!
 c     **********
       double precision zero,p66,two,three
       parameter(zero=0.0d0,p66=0.66d0,two=2.0d0,three=3.0d0)
@@ -4151,26 +4057,26 @@ c====================== The end of dcstep ==============================
       subroutine timer(ttime)
       double precision ttime
 c     *********
-c
-c     Subroutine timer
-c
-c     This subroutine is used to determine user time. In a typical 
-c     application, the user time for a code segment requires calls 
-c     to subroutine timer to determine the initial and final time.
-c
-c     The subroutine statement is
-c
-c       subroutine timer(ttime)
-c
-c     where
-c
-c       ttime is an output variable which specifies the user time.
-c
-c     Argonne National Laboratory and University of Minnesota.
-c     MINPACK-2 Project.
-c
-c     Modified October 1990 by Brett M. Averick.
-c
+!!
+!>     Subroutine timer
+!!
+!!     This subroutine is used to determine user time. In a typical 
+!!     application, the user time for a code segment requires calls 
+!!     to subroutine timer to determine the initial and final time.
+!!
+!!     The subroutine statement is
+!!
+!!       subroutine timer(ttime)
+!!
+!!     where
+!!
+!!       ttime is an output variable which specifies the user time.
+!!
+!!     Argonne National Laboratory and University of Minnesota.
+!!     MINPACK-2 Project.
+!!
+!!     Modified October 1990 by Brett M. Averick.
+!!
 c     **********
       real temp
       real tarray(2)
@@ -4179,6 +4085,8 @@ c     **********
 c     The first element of the array tarray specifies user time
 
 !ibm      temp = etime(tarray) 
+c     Modified 26 July 2024 by Francesco Carere
+      temp = etime(tarray) 
 
       ttime = dble(tarray(1))
  
@@ -4192,33 +4100,33 @@ c====================== The end of timer ===============================
       integer n,incx
       double precision x(n)
 c     **********
-c
-c     Function dnrm2
-c
-c     Given a vector x of length n, this function calculates the
-c     Euclidean norm of x with stride incx.
-c
-c     The function statement is
-c
-c       double precision function dnrm2(n,x,incx)
-c
-c     where
-c
-c       n is a positive integer input variable.
-c
-c       x is an input array of length n.
-c
-c       incx is a positive integer variable that specifies the 
-c         stride of the vector.
-c
-c     Subprograms called
-c
-c       FORTRAN-supplied ... abs, max, sqrt
-c
-c     MINPACK-2 Project. February 1991.
-c     Argonne National Laboratory.
-c     Brett M. Averick.
-c
+!!
+!>     Function dnrm2
+!!
+!!     Given a vector x of length n, this function calculates the
+!!     Euclidean norm of x with stride incx.
+!!
+!!     The function statement is
+!!
+!!       double precision function dnrm2(n,x,incx)
+!!
+!!     where
+!!
+!!       n is a positive integer input variable.
+!!
+!!       x is an input array of length n.
+!!
+!!       incx is a positive integer variable that specifies the 
+!!         stride of the vector.
+!!
+!!     Subprograms called
+!!
+!!       FORTRAN-supplied ... abs, max, sqrt
+!!
+!!     MINPACK-2 Project. February 1991.
+!!     Argonne National Laboratory.
+!!     Brett M. Averick.
+!!
 c     **********
       integer i
       double precision scale
@@ -4247,28 +4155,28 @@ c====================== The end of dnrm2 ===============================
 
       double precision function dpmeps()
 c     **********
-c
-c     Subroutine dpeps
-c
-c     This subroutine computes the machine precision parameter
-c     dpmeps as the smallest floating point number such that
-c     1 + dpmeps differs from 1.
-c
-c     This subroutine is based on the subroutine machar described in
-c
-c     W. J. Cody,
-c     MACHAR: A subroutine to dynamically determine machine parameters,
-c     ACM Transactions on Mathematical Software, 14, 1988, pages 303-311.
-c
-c     The subroutine statement is:
-c
-c       subroutine dpeps(dpmeps)
-c
-c     where
-c
-c       dpmeps is a double precision variable.
-c         On entry dpmeps need not be specified.
-c         On exit dpmeps is the machine precision.
+!!
+!>     Subroutine dpeps
+!!
+!!     This subroutine computes the machine precision parameter
+!!     dpmeps as the smallest floating point number such that
+!!     1 + dpmeps differs from 1.
+!!
+!!     This subroutine is based on the subroutine machar described in
+!!
+!!     W. J. Cody,
+!!     MACHAR: A subroutine to dynamically determine machine parameters,
+!!     ACM Transactions on Mathematical Software, 14, 1988, pages 303-311.
+!!
+!!     The subroutine statement is:
+!!
+!!       subroutine dpeps(dpmeps)
+!!
+!!     where
+!!
+!!       dpmeps is a double precision variable.
+!!         On entry dpmeps need not be specified.
+!!         On exit dpmeps is the machine precision.
 c
 c     MINPACK-2 Project. February 1991.
 c     Argonne National Laboratory and University of Minnesota.
@@ -4342,10 +4250,12 @@ c     determine dpmeps.
 c====================== The end of dpmeps ==============================
 
       subroutine daxpy(n,da,dx,incx,dy,incy)
-c
-c     constant times a vector plus a vector.
-c     uses unrolled loops for increments equal to one.
-c     jack dongarra, linpack, 3/11/78.
+!!
+!>   daxpy subroutine
+!!
+!!     constant times a vector plus a vector.
+!!     uses unrolled loops for increments equal to one.
+!!     jack dongarra, linpack, 3/11/78.
 c
 !sd      double precision dx(1),dy(1),da
       integer i,incx,incy,ix,iy,m,mp1,n
@@ -4393,10 +4303,11 @@ c
 c====================== The end of daxpy ===============================
 
       subroutine dcopy(n,dx,incx,dy,incy)
-c
-c     copies a vector, x, to a vector, y.
-c     uses unrolled loops for increments equal to one.
-c     jack dongarra, linpack, 3/11/78.
+!!
+!>  dcopy subroutine
+!!     copies a vector, x, to a vector, y.
+!!     uses unrolled loops for increments equal to one.
+!!     jack dongarra, linpack, 3/11/78.
 c
 !sd      double precision dx(1),dy(1)
       integer i,incx,incy,ix,iy,m,mp1,n
@@ -4446,10 +4357,12 @@ c
 c====================== The end of dcopy ===============================
 
       double precision function ddot(n,dx,incx,dy,incy)
-c
-c     forms the dot product of two vectors.
-c     uses unrolled loops for increments equal to one.
-c     jack dongarra, linpack, 3/11/78.
+
+!> ddot function
+!!
+!!     forms the dot product of two vectors.
+!!     uses unrolled loops for increments equal to one.
+!!     jack dongarra, linpack, 3/11/78.
 c
 !sd      double precision dx(1),dy(1),dtemp
       integer i,incx,incy,ix,iy,m,mp1,n
@@ -4501,38 +4414,37 @@ c====================== The end of ddot ================================
       integer lda,n,info
 !      double precision a(lda,1)
       double precision a(lda,lda)
-c
-c     dpofa factors a double precision symmetric positive definite
-c     matrix.
-c
-c     dpofa is usually called by dpoco, but it can be called
-c     directly with a saving in time if  rcond  is not needed.
-c     (time for dpoco) = (1 + 18/n)*(time for dpofa) .
-c
-c     on entry
-c
-c        a       double precision(lda, n)
-c                the symmetric matrix to be factored.  only the
-c                diagonal and upper triangle are used.
-c
-c        lda     integer
-c                the leading dimension of the array  a .
-c
-c        n       integer
-c                the order of the matrix  a .
-c
-c     on return
-c
-c        a       an upper triangular matrix  r  so that  a = trans(r)*r
-c                where  trans(r)  is the transpose.
-c                the strict lower triangle is unaltered.
-c                if  info .ne. 0 , the factorization is not complete.
-c
-c        info    integer
-c                = 0  for normal return.
-c                = k  signals an error condition.  the leading minor
-c                     of order  k  is not positive definite.
-c
+!!
+!>     dpofa factors a double precision symmetric positive definite  matrix.
+!!
+!!     dpofa is usually called by dpoco, but it can be called
+!!     directly with a saving in time if  rcond  is not needed.
+!!     (time for dpoco) = (1 + 18/n)*(time for dpofa) .
+!!
+!!     on entry
+!!
+!!        a       double precision(lda, n)
+!!                the symmetric matrix to be factored.  only the
+!!                diagonal and upper triangle are used.
+!!
+!!        lda     integer
+!!                the leading dimension of the array  a .
+!!
+!!        n       integer
+!!                the order of the matrix  a .
+!!
+!!     on return
+!!
+!!        a       an upper triangular matrix  r  so that  a = trans(r)*r
+!!                where  trans(r)  is the transpose.
+!!                the strict lower triangle is unaltered.
+!!                if  info .ne. 0 , the factorization is not complete.
+!!
+!!        info    integer
+!!                = 0  for normal return.
+!!                = k  signals an error condition.  the leading minor
+!!                     of order  k  is not positive definite.
+!!
 c     linpack.  this version dated 08/14/78 .
 c     cleve moler, university of new mexico, argonne national lab.
 c
@@ -4575,10 +4487,12 @@ c====================== The end of dpofa ===============================
 
       subroutine  dscal(n,da,dx,incx)
 c
-c     scales a vector by a constant.
-c     uses unrolled loops for increment equal to one.
-c     jack dongarra, linpack, 3/11/78.
-c     modified 3/93 to return if incx .le. 0.
+!!
+!>  dscal subroutine
+!!     scales a vector by a constant.
+!!     uses unrolled loops for increment equal to one.
+!!     jack dongarra, linpack, 3/11/78.
+!!     modified 3/93 to return if incx .le. 0.
 c
 !sd      double precision da,dx(1)
       integer i,incx,m,mp1,n,nincx
@@ -4624,51 +4538,51 @@ c====================== The end of dscal ===============================
 !      double precision t(ldt,1),b(1)
       double precision t(ldt,ldt),b(ldt)
 c
-c
-c     dtrsl solves systems of the form
-c
-c                   t * x = b
-c     or
-c                   trans(t) * x = b
-c
-c     where t is a triangular matrix of order n. here trans(t)
-c     denotes the transpose of the matrix t.
-c
-c     on entry
-c
-c         t         double precision(ldt,n)
-c                   t contains the matrix of the system. the zero
-c                   elements of the matrix are not referenced, and
-c                   the corresponding elements of the array can be
-c                   used to store other information.
-c
-c         ldt       integer
-c                   ldt is the leading dimension of the array t.
-c
-c         n         integer
-c                   n is the order of the system.
-c
-c         b         double precision(n).
-c                   b contains the right hand side of the system.
-c
-c         job       integer
-c                   job specifies what kind of system is to be solved.
-c                   if job is
-c
-c                        00   solve t*x=b, t lower triangular,
-c                        01   solve t*x=b, t upper triangular,
-c                        10   solve trans(t)*x=b, t lower triangular,
-c                        11   solve trans(t)*x=b, t upper triangular.
-c
-c     on return
-c
-c         b         b contains the solution, if info .eq. 0.
-c                   otherwise b is unaltered.
-c
-c         info      integer
-c                   info contains zero if the system is nonsingular.
-c                   otherwise info contains the index of
-c                   the first zero diagonal element of t.
+!!
+!>     dtrsl solves systems of the form
+!!
+!!                   t * x = b
+!!     or
+!!                   trans(t) * x = b
+!!
+!!     where t is a triangular matrix of order n. here trans(t)
+!!     denotes the transpose of the matrix t.
+!!
+!!     on entry
+!!
+!!         t         double precision(ldt,n)
+!!                   t contains the matrix of the system. the zero
+!!                   elements of the matrix are not referenced, and
+!!                   the corresponding elements of the array can be
+!!                   used to store other information.
+!!
+!!         ldt       integer
+!!                   ldt is the leading dimension of the array t.
+!!
+!!         n         integer
+!!                   n is the order of the system.
+!!
+!!         b         double precision(n).
+!!                   b contains the right hand side of the system.
+!!
+!!         job       integer
+!!                   job specifies what kind of system is to be solved.
+!!                   if job is
+!!
+!!                        00   solve t*x=b, t lower triangular,
+!!                        01   solve t*x=b, t upper triangular,
+!!                        10   solve trans(t)*x=b, t lower triangular,
+!!                        11   solve trans(t)*x=b, t upper triangular.
+!!
+!!     on return
+!!
+!!         b         b contains the solution, if info .eq. 0.
+!!                   otherwise b is unaltered.
+!!
+!!         info      integer
+!!                   info contains zero if the system is nonsingular.
+!!                   otherwise info contains the index of
+!!                   the first zero diagonal element of t.
 c
 c     linpack. this version dated 08/14/78 .
 c     g. w. stewart, university of maryland, argonne national lab.
@@ -4757,34 +4671,16 @@ c
       
 c====================== The end of dtrsl ===============================
 
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2009, 2010 Srdjan Dobricic, CMCC, Bologna                   !
-!                                                                          !
-!    The MPI communication in this file file is part of OceanVar.          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
       subroutine mpiddot(ddot,n,dx,dy,
      +                 mpicom, myrank, nproc)
 c
-c     forms the dot product of two vectors.
-c     uses unrolled loops for increments equal to one.
-c     jack dongarra, linpack, 3/11/78.
-c
+!!
+!>     mpiddot subroutine
+!!
+!!     forms the dot product of two vectors.
+!!     uses unrolled loops for increments equal to one.
+!!     jack dongarra, linpack, 3/11/78.
+!!
 !sd      double precision dx(1),dy(1),dtemp
       integer i,ix,iy,m,mp1,n
       double precision dx(n),dy(n),dtemp

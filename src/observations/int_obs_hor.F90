@@ -1,185 +1,335 @@
-subroutine int_obs_hor ( no, olat, olon, flc, ib, jb, pb, qb)
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Get interpolation parameters for a grid                              !
+!> Get interpolation parameters for a grid                              
+!!
+!!
+!!
 !                                                                      !
-! Version 1: S.Dobricic 2006                                           !
+! Version 1: Srdjan Dobricic 2006                                      !
+! Version 2: Mario Adani     2023                                      !
 !-----------------------------------------------------------------------
+SUBROUTINE int_obs_hor ( no, olat, olon, flc, eve, ib, jb, pb, qb)
 
- use set_knd
- use drv_str
- use grd_str
- use mpi_str
+   USE set_knd
+   USE drv_str
+   USE grd_str
 
- implicit none
+   IMPLICIT NONE
 
 
-  integer(i8)   ::  no
-  real(r8)      ::  olat(no), olon(no), pb(no), qb(no)
-  integer(i8)   ::  flc(no), ib(no), jb(no)
+   INTEGER(i8)               ::  no
+   REAL(r8)                  ::  olat(no), olon(no), pb(no), qb(no)
+   INTEGER(i8)               ::  flc(no), ib(no), jb(no), eve(no)
+   INTEGER(i4)               ::  k, ierr, kks, kkp
+   INTEGER(i4)               ::  i1, kk, i, j1, j, IF1, jf1
+   REAL(r8)                  ::  p1, q1, pf1, qf1
+   REAL(r8)                  ::  msk4, div_x, div_y, rmn, dst, dstm
+   REAL(r8)                  ::  tga, ang, lat_rot, lon_rot, lat_lb_rot, lon_lb_rot
+   REAL(r8)                  ::  lat_lt_rot, lon_rb_rot
+   REAL(r8)                  ::  lonv(4),latv(4),beas,bwst
+   logical                   :: results,llinvalidcell
+   !FUNCTION
+   logical                   :: linquad
+   REAL(r8),ALLOCATABLE      ::  lon(:,:),lat(:,:)
+   REAL(r8),ALLOCATABLE      ::  plon(:),plat(:)
 
-  integer(i4)   ::  k, ierr, kks, kkp
-  integer(i4)   ::  i1, kk, i, j1, j, if1, jf1
-  real(r8)      ::  p1, q1, pf1, qf1
-  real(r8)      ::  msk4, div_x, div_y, rmn, dst, dstm
-  logical       ::  ins
-  real(r8)      ::  tga, ang, lat_rot, lon_rot, lat_lb_rot, lon_lb_rot
-  real(r8)      ::  lat_lt_rot, lon_rb_rot
 
-  ins(i,i1) = i.ge.1 .and. i.lt.i1
+   rmn = 1.e-6
 
-  rmn = 1.e-6
+   IF ( grd%prj .EQ. 0 ) THEN
+! Equally distant lat-lon grid
+      DO kk = 1,no
+         q1 = (olat(kk) - grd%lat1_1) / grd%dlt + 1.0
+         j1 = INT(q1)
+         p1 = (olon(kk) - grd%lon1_1) / grd%dln + 1.0
+         i1 = INT(p1)
+         IF ( j1 .GE. grd%jgs .AND. j1 .LT. grd%jge+grd%jae .AND. &
+              i1 .GE. grd%igs .AND. i1 .LT. grd%ige+grd%iae) THEN
+            IF ( flc(kk) .EQ. 1 ) THEN
+               ib(kk) = i1-grd%igs+1
+               jb(kk) = j1-grd%jgs+1
+               pb(kk) = MAX((p1-i1),rmn)
+               qb(kk) = MAX((q1-j1),rmn)
+            ENDIF
+         ELSE
+            IF ( flc(kk) .EQ. 1 ) THEN
+               eve(kk) = 2
+               flc(kk) = 0
+            ENDIF
+         ENDIF
+      ENDDO
 
- if(grd%prj.eq.0)then
+   ELSE
 
-! Equally distant lat-lon grid 
+      ib(:) = -999
+      jb(:) = -999
+      pb(:) = -999.9
+      qb(:) = -999.9
 
-    do kk = 1,no
-     q1 = (olat(kk) - grd%lat(1,1)) / grd%dlt + 1.0
-     j1 = int(q1)
-     p1 = (olon(kk) - grd%lon(1,1)) / grd%dln + 1.0
-     i1 = int(p1)
-     if(ins(j1,grd%jm+grd%jae) .and. ins(i1,grd%im+grd%iae)) then
-       ib(kk) = i1
-       jb(kk) = j1
-       pb(kk) = max((p1-i1),rmn)
-       qb(kk) = max((q1-j1),rmn)
-     else
-       flc(kk) = 0
-     endif
-    enddo
+!-----------------------------------------------------------------------
+! Copy grid positions to temporary arrays and normalization 0 to 360
+! done in def_grd.F90 to 0 to 360.
+!-----------------------------------------------------------------------
+      ALLOCATE ( lon (1-grd%ias:grd%im+grd%iae,1-grd%jas:grd%jm+grd%jae))
+      ALLOCATE ( lat (1-grd%ias:grd%im+grd%iae,1-grd%jas:grd%jm+grd%jae))
+      lon(:,:) = grd%lon
+      lat(:,:) = grd%lat
+      WHERE ( lon(:,:) .LT. 0.0_r8 )
+         lon(:,:) = lon(:,:) + 360.0_r8
+      END WHERE
+      WHERE ( lon(:,:) .GT. 360.0_r8 )
+         lon(:,:) = lon(:,:) - 360.0_r8
+      END WHERE
 
- else
+!-----------------------------------------------------------------------
+! Copy observation positions to temporary arrays and renormalize to 0 to 360.
+! It may be not necdssary becaUSE the check is in get_xxx.F90 but for the
+! time being we leave it also here.
+!-----------------------------------------------------------------------
+      ALLOCATE ( plon(no),plat(no) )
+      plon(:) = olon(:)
+      plat(:) = olat(:)
+      WHERE ( plon(:) .LT. 0.0_r8   )
+         plon(:) = plon(:) + 360.0_r8
+      END WHERE
+      WHERE ( plon(:) .GT. 360.0_r8   )
+         plon(:) = plon(:) - 360.0_r8
+      END WHERE
 
-! General rotated grid
+! Add grid resolution to handle ambiguity of 360
+      beas = MAXVAL(MAXVAL(lon,1)) + grd%dln
+      bwst = MINVAL(MINVAL(lon,1)) - grd%dln
+      DO kk = 1,no
+         IF ( plat(kk) .GE. grd%bnrt .OR. plat(kk) .LT. grd%bsth .OR.   &
+            plon(kk) .GE. beas .OR. plon(kk) .LT. bwst ) THEN
+            flc(kk) = 0
+            eve(kk) = 2
+         ENDIF
+      ENDDO
 
-    do kk = 1,no
-     if(olat(kk).ge.grd%bnrt .or. olat(kk).lt.grd%bsth .or.   &
-        olon(kk).ge.grd%beas .or. olon(kk).lt.grd%bwst ) then
-       flc(kk) = 0
-     endif
-    enddo
-
+!------------------------------------------------------------------------
+! Master loop for grid search brute force method
+!------------------------------------------------------------------------
+      k   = 1 ! first level
       kkp = 1
       kks = 0
+      obsloop:     DO kk = 1, no
+         ! valid obs  ?
+         IF ( flc(kk).EQ. 1 )  THEN
+            ! same position of observation copy same values and THEN cycle
+            IF ( flc(kkp) .EQ. 1 .AND. kks .GT. 0 .AND.          &
+               plat(kk) .EQ. plat(kkp) .AND. plon(kk) .EQ. plon(kkp)) THEN
+               ib(kk) = ib(kkp)
+               jb(kk) = jb(kkp)
+               pb(kk) = pb(kkp)
+               qb(kk) = qb(kkp)
+            ELSE
+!------------------------------------------------------------------------
+! START Master loop for grid search brute force method
+!------------------------------------------------------------------------
+               gridloop:   DO j = 1,grd%jm-1
+                  DO i = 1,grd%im-1
+                     lonv(1)=lon(i  ,j  )
+                     lonv(2)=lon(i+1,j  )
+                     lonv(3)=lon(i+1,j+1)
+                     lonv(4)=lon(i  ,j+1)
+                     latv(1)=lat(i  ,j  )
+                     latv(2)=lat(i+1,j  )
+                     latv(3)=lat(i+1,j+1)
+                     latv(4)=lat(i  ,j+1)
+                     llinvalidcell = grd%msk(i  ,j  ,k) .EQ. 0.0_r8 .AND. &
+                                     grd%msk(i+1,j  ,k) .EQ. 0.0_r8 .AND. &
+                                     grd%msk(i+1,j+1,k) .EQ. 0.0_r8 .AND. &
+                                     grd%msk(i  ,j+1,k) .EQ. 0.0_r8
+!---------------------------------------------------------------------
+! Find observations which are on within 1e-6 of a grid point
+!---------------------------------------------------------------------
+                     IF ( (ABS(lon(i,j) - plon(kk)) < 1e-6 ) .AND. &
+                        (ABS(lat(i,j) - plat(kk)) < 1e-6 ) ) THEN
+                        IF ( llinvalidcell ) THEN
+                           ! Land cycle
+                           flc(kk) = 0
+                           eve(kk) = 3
+                           EXIT gridloop
+                        ENDIF
+                        ib(kk) = i
+                        jb(kk) = j
+                        pb(kk) = 1.0_r8
+                        qb(kk) = 1.0_r8
+                        EXIT gridloop
+                     ENDIF
+                     results = linquad(plon(kk),plat(kk),lonv,latv)
+                     IF ( results ) THEN
+                        IF ( llinvalidcell ) THEN
+                           ! Land cycle
+                           flc(kk) = 0
+                           eve(kk) = 3
+                           EXIT gridloop
+                        ENDIF
+                        ib(kk) = i
+                        jb(kk) = j
+                        tga = ((lon(i,j+1)-lon(i,j))/(lat(i,j+1)-lat(i,j)))
+                        ang = ATAN (tga)
 
-  do kk = 1,no
+                        lon_lb_rot = lon(i,j)*COS(ang) - lat(i,j)*SIN(ang)
+                        lat_lb_rot = lon(i,j)*SIN(ang) + lat(i,j)*COS(ang)
+                        lon_rb_rot = lon(i+1,j)*COS(ang) - lat(i+1,j)*SIN(ang)
+                        lat_lt_rot = lon(i,j+1)*SIN(ang) + lat(i,j+1)*COS(ang)
+                        lon_rot = plon(kk) * COS(ang) - plat(kk) * SIN(ang)
+                        lat_rot = plon(kk) * SIN(ang) + plat(kk) * COS(ang)
+                        qb(kk) = (lat_rot - lat_lb_rot) / (lat_lt_rot - lat_lb_rot)
+                        pb(kk) = (lon_rot - lon_lb_rot) / (lon_rb_rot - lon_lb_rot)
 
-   if(flc(kk).eq.1 .and. flc(kkp).eq.1 .and. kks.gt.0 .and.          &
-          olat(kk).eq.olat(kkp) .and. olon(kk).eq.olon(kkp)) then
+                        EXIT gridloop
+                     ENDIF
 
-       ib(kk) = ib(kkp)
-       jb(kk) = jb(kkp)
-       pb(kk) = pb(kkp)
-       qb(kk) = qb(kkp)
-        
-   else if(flc(kk).eq.1) then
+                  ENDDO
+               ENDDO  gridloop
+!------------------------------------------------------------------------
+! END Master loop for grid search brute force method
+!------------------------------------------------------------------------
 
+            ENDIF  ! same position of previous obs?
+         ENDIF  ! valid flag
+         kkp = kk
+         kks = kk
+      ENDDO  obsloop
+!----------------------
+! ADANI WARNING!!!!!!!!
+! at the border of each subdomain can not find the grid cell
+! for now we must procede
+!---------------------
+      WHERE ( ib(:) < 0 .OR. jb(:) < 0 )
+         flc(:) = 0
+         eve(:) = 4
+      END WHERE
+! END ADANI WARNING!!!!!!!!
+      DEALLOCATE(lon, lat, plon, plat)
+   ENDIF   ! Rotated grid
 
-        dstm = 1.e20
-      do j=1,grd%jm
-      do i=1,grd%im
-        dst = (olat(kk)-grd%lat(i,j))**2 +     &
-              ((olon(kk)-grd%lon(i,j))*cos(olat(kk)*3.14/180.))**2
-         if(dst.lt.dstm)then
-          i1 = i
-          j1 = j
-          dstm = dst
-         endif
-      enddo
-      enddo
+CONTAINS
+   PURE FUNCTION ins(i,j)
+      LOGICAL                :: ins
+      INTEGER, INTENT(in   ) :: i,j
+      ins =  i.GE.1 .AND. i.LT.j
+   END FUNCTION ins
 
-
-         if1 = -99
-         jf1 = -99
-
-
-      do j=max(j1-1,1),j1
-      do i=max(i1-1,1),i1
-
-        tga = ((grd%lon(i,j+1)-grd%lon(i,j))/(grd%lat(i,j+1)-grd%lat(i,j)))
-        ang = atan (tga)
-
-        lon_lb_rot = grd%lon(i,j)*cos(ang) - grd%lat(i,j)*sin(ang)
-        lat_lb_rot = grd%lon(i,j)*sin(ang) + grd%lat(i,j)*cos(ang)
-        lon_rb_rot = grd%lon(i+1,j)*cos(ang) - grd%lat(i+1,j)*sin(ang)
-        lat_lt_rot = grd%lon(i,j+1)*sin(ang) + grd%lat(i,j+1)*cos(ang)
-        lon_rot = olon(kk) * cos(ang) - olat(kk) * sin(ang)
-        lat_rot = olon(kk) * sin(ang) + olat(kk) * cos(ang)
-
-         q1 = (lat_rot - lat_lb_rot) / (lat_lt_rot - lat_lb_rot)
-         p1 = (lon_rot - lon_lb_rot) / (lon_rb_rot - lon_lb_rot)
-
-       if(q1.ge.0. .and. q1.lt. 1.0 .and. p1.ge.0. .and. p1.lt.1.0 )then
-          if1 = i
-          jf1 = j
-          pf1 = p1
-          qf1 = q1
-       endif
-      enddo
-      enddo
-
-     if(ins(jf1,grd%jm+grd%jae) .and. ins(if1,grd%im+grd%iae)) then
-       ib(kk) = if1
-       jb(kk) = jf1
-       pb(kk) = max(pf1,rmn)
-       qb(kk) = max(qf1,rmn)
-     else
-       flc(kk) = 0
-     endif
-
-   endif
-
-      kkp = kk 
-      kks = kk
-
-  enddo
-
- endif
-
-
-end subroutine int_obs_hor
-
-subroutine int_obs_pq( i1, j1, k1, p1, q1, pq1, pq2, pq3, pq4)
-
+END SUBROUTINE int_obs_hor
 !-----------------------------------------------------------------------
 !                                                                      !
-! Get interpolation parameters for a grid                              !
+!> Get interpolation parameters for a grid                             
+!!
+!!
+!!
 !                                                                      !
-! Version 1: S.Dobricic 2006                                           !
+! Version 1: Srdjan Dobricic 2006                                      !
 !-----------------------------------------------------------------------
+SUBROUTINE int_obs_pq( i1, j1, k1, p1, q1, pq1, pq2, pq3, pq4)
 
- use set_knd
- use grd_str
+   USE set_knd
+   USE grd_str
 
- implicit none
+   IMPLICIT NONE
 
-  integer(i8)   ::  i1, j1, k1
-  real(r8)      ::  p1, q1
-  real(r8)      ::  pq1, pq2, pq3, pq4
-  real(r8)      ::  div_x, div_y
+   INTEGER(i8)   ::  i1, j1, k1
+   REAL(r8)      ::  p1, q1
+   REAL(r8)      ::  pq1, pq2, pq3, pq4
+   REAL(r8)      ::  div_x, div_y
 
-   div_y =  (1.-q1) * max(grd%msk(i1,j1  ,k1),grd%msk(i1+1,j1  ,k1))     &
-           +    q1  * max(grd%msk(i1,j1+1,k1),grd%msk(i1+1,j1+1,k1))
+   div_y =  (1.-q1) * MAX(grd%msk(i1,j1  ,k1),grd%msk(i1+1,j1  ,k1))     &
+           +    q1  * MAX(grd%msk(i1,j1+1,k1),grd%msk(i1+1,j1+1,k1))
    div_x =  (1.-p1) * grd%msk(i1  ,j1,k1) + p1 * grd%msk(i1+1,j1,k1)
-     pq1 = grd%msk(i1,j1,k1)                                      &
-         * max(grd%msk(i1,j1,k1),grd%msk(i1+1,j1,k1))             &
-            * (1.-p1) * (1.-q1)                                   &
-         /( div_x * div_y + 1.e-16 )
-     pq2 = grd%msk(i1+1,j1,k1)                                    &
-         * max(grd%msk(i1,j1,k1),grd%msk(i1+1,j1,k1))             &
-           *     p1  * (1.-q1)                                    &
-         /( div_x * div_y + 1.e-16 )
+   pq1 = grd%msk(i1,j1,k1)                                      &
+         * MAX(grd%msk(i1,j1,k1),grd%msk(i1+1,j1,k1))           &
+         * (1.-p1) * (1.-q1)                                    &
+         /( div_x * div_y + 1.e-16_r8 )
+   pq2 = grd%msk(i1+1,j1,k1)                                    &
+         * MAX(grd%msk(i1,j1,k1),grd%msk(i1+1,j1,k1))           &
+         *     p1  * (1.-q1)                                    &
+         /( div_x * div_y + 1.e-16_r8 )
    div_x =  (1.-p1) * grd%msk(i1  ,j1+1,k1) + p1 * grd%msk(i1+1,j1+1,k1)
-     pq3 = grd%msk(i1,j1+1,k1)                                    &
-         * max(grd%msk(i1,j1+1,k1),grd%msk(i1+1,j1+1,k1))         &
-           * (1.-p1) *     q1                                     &
-         /( div_x * div_y + 1.e-16 )
-     pq4 = grd%msk(i1+1,j1+1,k1)                                  &
-         * max(grd%msk(i1,j1+1,k1),grd%msk(i1+1,j1+1,k1))         &
-           *     p1  *     q1                                     &
-         /( div_x * div_y + 1.e-16 )
+   pq3 = grd%msk(i1,j1+1,k1)                                    &
+         * MAX(grd%msk(i1,j1+1,k1),grd%msk(i1+1,j1+1,k1))       &
+         * (1.-p1) *     q1                                     &
+         /( div_x * div_y + 1.e-16_r8 )
+   pq4 = grd%msk(i1+1,j1+1,k1)                                  &
+         * MAX(grd%msk(i1,j1+1,k1),grd%msk(i1+1,j1+1,k1))       &
+         *     p1  *     q1                                     &
+         /( div_x * div_y + 1.e-16_r8 )
 
+END SUBROUTINE int_obs_pq
+!!----------------------------------------------------------------------
+!>                    ***  function linquad ***
+!!
+!! ** Purpose : Determine whether a point P(x,y) lies within or on the
+!!              boundary of a quadrangle (ABCD) of any shape on a plane.
+!!
+!! ** Method  : Check if the vectorial products PA x PC, PB x PA,
+!!              PC x PD, and PD x PB are all negative.
+!
+! ** Action  :
+!
+! History :
+!        !  2001-11  (N. Daget, A. Weaver)
+!        !  2006-08  (A. Weaver) NEMOVAR migration
+!        !  2006-10  (A. Weaver) Cleanup
+!!----------------------------------------------------------------------
+LOGICAL FUNCTION linquad( px, py, pxv, pyv )
 
-end subroutine int_obs_pq
+   USE set_knd
+   IMPLICIT NONE
+
+   !! * Arguments
+   REAL(r8), INTENT(IN) :: px        ! (lon) of the point P(x,y)
+   REAL(r8), INTENT(IN) :: py        ! (lat) of the point P(x,y)
+   REAL(r8), DIMENSION(4), INTENT(IN) :: &
+   & pxv,  &                  ! (lon, lat) of the surrounding cell
+   & pyv
+
+   !! * Local declarations
+   REAL(r8) :: zst1
+   REAL(r8) :: zst2
+   REAL(r8) :: zst3
+   REAL(r8) :: zst4
+
+   !-----------------------------------------------------------------------
+   ! Test to see IF the point is within the cell
+   !-----------------------------------------------------------------------
+   linquad = .FALSE.
+   zst1 =   ( px - pxv(1) ) * ( py - pyv(4) ) &
+   &   - ( py - pyv(1) ) * ( px - pxv(4) )
+   IF ( zst1 <= 0.0_r8 ) THEN
+      zst2 =   ( px - pxv(4) ) * ( py - pyv(3) ) &
+      &   - ( py - pyv(4) ) * ( px - pxv(3) )
+      IF ( zst2 <= 0.0_r8 ) THEN
+         zst3 =   ( px - pxv(3) ) * ( py - pyv(2) ) &
+         &   - ( py - pyv(3) ) * ( px - pxv(2) )
+         IF ( zst3 <= 0.0_r8) THEN
+            zst4 =   ( px - pxv(2) ) * ( py - pyv(1) ) &
+            &   - ( py - pyv(2) ) * ( px - pxv(1) )
+            IF ( zst4 <= 0.0_r8 ) linquad = .TRUE.
+         ENDIF
+      ENDIF
+   ENDIF
+
+END FUNCTION linquad
+

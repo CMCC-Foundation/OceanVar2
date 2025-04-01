@@ -1,0 +1,8 @@
+#!/bin/bash
+
+ncrename -d x,im -d y,jm -d deptht,km background.nc
+ncks -v votemper,vosaline background.nc tmp.nc
+rm -f  background.nc
+nccopy  -d 9  tmp.nc background.nc
+rm -f tmp.nc
+

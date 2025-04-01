@@ -1,0 +1,30 @@
+# EXE: Specify the number of executable and their names
+nexe=1
+fixed
+OV
+
+# NINPUT: Specify the number of input datasets and their names
+ninput= 1
+fixed
+nrm
+
+# Namelist configuration:
+varpergroup= 1 2
+
+filt
+fixed
+DIF
+
+bar bal
+fixed
+BAR
+
+
+
+# MPI processs decomposition
+nproc= 4
+var
+1x1
+1x4
+2x2
+4x1

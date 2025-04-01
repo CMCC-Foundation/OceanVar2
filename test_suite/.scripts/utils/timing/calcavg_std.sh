@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+awk -v CONVFMT=%.17g --field-separator ':' 'NR==1{print $1":"$2":"$3":"$3"std:"$4":"$4"std"} {lvl[FNR]=$1; nm[FNR]=$2; A[FNR]+=$3; AS[FNR]+=($3)^2; B[FNR]+=$4; BS[FNR]+=($4)^2 }  END{for(i=2;i<=FNR;i++)print lvl[i]":"nm[i]":"A[i]/(ARGC-1)":"sqrt((AS[i]-A[i]^2/(ARGC-1))/(ARGC-2))":"B[i]":"sqrt((BS[i]-B[i]^2/(ARGC-1))/(ARGC-2)) }' "$@"
+#awk -v CONVFMT=%.17g --field-separator ':' 'NR==1{print $1":"$2":"$3":"$3"std:"$4":"$4"std"}{lvl[FNR]=$1; nm[FNR]=$2; A[FNR]+=$3; AS[FNR]+=($3)^2; B[FNR]+=$4; BS[FNR]+=($4)^2 } END{for(i=2;i<=FNR;i++)print lvl[i]":"nm[i]":"A[i]/(ARGC-1)":"sqrt((AS[i]-A[i]^2/(ARGC-1)/(ARGC-1))":"B[i]":"sqrt((BS[i]-B[i]^2/(ARGC-1)/(ARGC-1)) }' "$@"

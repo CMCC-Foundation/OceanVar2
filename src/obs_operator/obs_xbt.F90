@@ -1,61 +1,55 @@
-subroutine obs_xbt
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2006 Srdjan Dobricic, CMCC, Bologna                         !
-!                                                                          !
-!    This file is part of OceanVar.                                          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.       !
-!                                                                          !
-!---------------------------------------------------------------------------
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Apply observational operator for XBT profiles                        !
+!> Apply observational operator for XBT profiles                       
+!!
+!!
+!!
 !                                                                      !
-! Version 1: S.Dobricic 2006                                           !
+! Version 1: Srdjan Dobricic 2006                                      !
 !-----------------------------------------------------------------------
+SUBROUTINE obs_xbt
 
+   USE set_knd
+   USE grd_str
+   USE obs_str
 
- use set_knd
- use grd_str
- use obs_str
+   IMPLICIT NONE
 
- implicit none
+   INTEGER(i4)   ::  i, j, k, kk
 
- INTEGER(i4)   ::  i, j, k, kk
+   DO kk = 1,xbt%no
+      IF ( (xbt%flc(kk) .EQ. 1 .OR. xbt%fls(kk) .EQ. 1) .AND. xbt%par(kk) .EQ. 1 ) THEN
+         i = xbt%ib(kk)
+         j = xbt%jb(kk)
+         k = xbt%kb(kk)
+         xbt%inc(kk) = xbt%pq1(kk) * grd%tem(i  ,j  ,k  ) +       &
+                       xbt%pq2(kk) * grd%tem(i+1,j  ,k  ) +       &
+                       xbt%pq3(kk) * grd%tem(i  ,j+1,k  ) +       &
+                       xbt%pq4(kk) * grd%tem(i+1,j+1,k  ) +       &
+                       xbt%pq5(kk) * grd%tem(i  ,j  ,k+1) +       &
+                       xbt%pq6(kk) * grd%tem(i+1,j  ,k+1) +       &
+                       xbt%pq7(kk) * grd%tem(i  ,j+1,k+1) +       &
+                       xbt%pq8(kk) * grd%tem(i+1,j+1,k+1)
+      ENDIF
+   ENDDO
 
- do kk = 1,xbt%no
-
-  if( (xbt%flc(kk).eq.1 .or. xbt%fls(kk).eq.1) .and. xbt%par(kk).eq.1 )then
-
-    i=xbt%ib(kk)
-    j=xbt%jb(kk)
-    k=xbt%kb(kk)
-
-    xbt%inc(kk) = xbt%pq1(kk) * grd%tem(i  ,j  ,k  ) +       &
-                  xbt%pq2(kk) * grd%tem(i+1,j  ,k  ) +       &
-                  xbt%pq3(kk) * grd%tem(i  ,j+1,k  ) +       &
-                  xbt%pq4(kk) * grd%tem(i+1,j+1,k  ) +       &
-                  xbt%pq5(kk) * grd%tem(i  ,j  ,k+1) +       &
-                  xbt%pq6(kk) * grd%tem(i+1,j  ,k+1) +       &
-                  xbt%pq7(kk) * grd%tem(i  ,j+1,k+1) +       &
-                  xbt%pq8(kk) * grd%tem(i+1,j+1,k+1)
-
-  endif
-
- enddo
-
-end subroutine obs_xbt
+END SUBROUTINE obs_xbt

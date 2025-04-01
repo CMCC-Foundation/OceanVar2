@@ -1,95 +1,78 @@
-subroutine obs_tra
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2007 Srdjan Dobricic, CMCC, Bologna, and                    !
-!                   Vincent Taillandier, Locean, Paris                     !
-!                                                                          !
-!    This file is part of OceanVar.                                        !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Call Argo trajectory model                                           !
+!> Call Argo trajectory model                                          
+!!
+!!
+!!
 !                                                                      !
-! Version 1: V. Taillandier, S. Dobricic 2007                          !
+! Version 1: Vincent Taillandier, Srdjan Dobricic 2007                 !
 !                                                                      !
 !-----------------------------------------------------------------------
+SUBROUTINE obs_tra
 
+   USE set_knd
+   USE grd_str
+   USE obs_str
+   USE mpi_str
 
- use set_knd
- use grd_str
- use obs_str
- use mpi_str
+   IMPLICIT NONE
 
- implicit none
+   INTEGER(i4)   ::  i, j, img, jmg, k, km
 
- INTEGER(i4)   ::  i, j, img, jmg, k, km
+   IF ( tra%ncc .GT. 0 .OR. tra%ncs .GT. 0) THEN
 
- if(tra%ncc.gt.0 .or. tra%ncs.gt.0)then
+      IF ( mpi%myrank .EQ. 0 ) THEN
+         img = grd%img
+         jmg = grd%jmg
+      ELSE
+         img = 1
+         jmg = 1
+      ENDIF
 
-   if(mpi%myrank.eq.0) then
-    img = grd%img
-    jmg = grd%jmg
-   else
-    img = 1
-    jmg = 1
-   endif
+      k   = tra%lev
+      km  = grd%km
 
-    k   = tra%lev
-    km  = grd%km
+      IF ( mpi%nproc .GT. 1 ) THEN
+         CALL gth_mpi( img, jmg, k, km, grd%uvl, tra%uvl)
+         CALL gth_mpi( img, jmg, k, km, grd%vvl, tra%vvl)
+      ELSE
+         tra%uvl(:,:) = grd%uvl(:,:,k)
+         tra%vvl(:,:) = grd%vvl(:,:,k)
+      ENDIF
 
-   if(mpi%nproc.gt.1)then
-      call gth_mpi( img, jmg, k, km, grd%uvl, tra%uvl)
-      call gth_mpi( img, jmg, k, km, grd%vvl, tra%vvl)
-   else
-      tra%uvl(:,:) = grd%uvl(:,:,k) 
-      tra%vvl(:,:) = grd%vvl(:,:,k)
-   endif
+      IF ( mpi%myrank .EQ. 0 ) THEN
+         CALL mod_trj_tl( tra%im,tra%jm,tra%umn,tra%vmn,tra%dx,tra%dy,tra%flc, tra%fls, &
+                          tra%nt,tra%no,tra%xmn,tra%ymn,tra%dtm,                        &
+                          tra%uvl,tra%vvl,tra%xtl,tra%ytl )
+         DO k = 1,tra%no
+            IF ( tra%flc(k) .EQ. 1 .OR. tra%fls(k) .EQ. 1 ) THEN
+               tra%inx(k) = tra%xtl(k)
+               tra%iny(k) = tra%ytl(k)
+               i = INT(tra%xmn(tra%nt+1,k)+tra%xtl(k))
+               j = INT(tra%ymn(tra%nt+1,k)+tra%ytl(k))
+            ENDIF
+         ENDDO
+      ENDIF
 
+   ENDIF
 
-  if(mpi%myrank.eq.0) then
-
-
-  call mod_trj_tl( tra%im,tra%jm,tra%umn,tra%vmn,tra%dx,tra%dy,tra%flc, tra%fls, &
-                   tra%nt,tra%no,tra%xmn,tra%ymn,tra%dtm,                        &
-                   tra%uvl,tra%vvl,tra%xtl,tra%ytl )
-
-
-   do k=1,tra%no
-
-    if(tra%flc(k).eq.1 .or. tra%fls(k).eq.1)then
-
-     tra%inx(k) = tra%xtl(k)
-     tra%iny(k) = tra%ytl(k)
-
-     i=int(tra%xmn(tra%nt+1,k)+tra%xtl(k))
-     j=int(tra%ymn(tra%nt+1,k)+tra%ytl(k))
-!sd     tra%loa(k) = tra%lon(i,j) +     &
-!sd                  (tra%xmn(tra%nt+1,k)+tra%xtl(k)-i)*(tra%lon(i+1,j)-tra%lon(i,j))
-!sd     tra%laa(k) = tra%lat(i,j) +     &
-!sd                  (tra%ymn(tra%nt+1,k)+tra%ytl(k)-j)*(tra%lat(i,j+1)-tra%lat(i,j))
-
-    endif
-
-   enddo
-
-  endif
-
- endif
-
-end subroutine obs_tra
+END SUBROUTINE obs_tra

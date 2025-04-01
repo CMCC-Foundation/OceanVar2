@@ -1,0 +1,482 @@
+!------------------------------------------------------------
+! OceanVar namelist
+!------------------------------------------------------------
+!
+! Namelist runlst
+! ---
+!
+!             Define the general set-up
+!
+!  flag_a   - character*128: flag for the analysis
+!  sdat_f   - Starting date of the forecast
+!  shou_f   - Starting hour of the forecast
+!
+! ---
+&runlst
+   flag_a   = "medfs831_analysis"
+   sdat_f   = @YYYYMMDD@
+   shou_f   = 00
+/
+!------------------------------------------------------------
+!
+! Namelist obslst
+!
+!             Observational data sets set-up
+!
+! ---
+!  obs_sla -  1-assimilate sla, 0-do not assimilate
+!  obs_arg -  1-assimilate Argo, 0-do not assimilate
+!  obs_xbt -  1-assimilate XBT, 0-do not assimilate
+!  obs_gld -  1-assimilate glider, 0-do not assimilate
+!  obs_tra -  1-assimilate Argo trajectories, 0-do not assimilate
+!  obs_trd -  1-assimilate drifter trajectories, 0-do not assimilate
+!  obs_vdr -  1-assimilate velocity from drifters,
+!             0-do not assimilate
+!  obs_gvl -  1-assimilate glider velocities, 0-do not assimilate
+!  obs_sst -  1-assimilate SST, 0-do not assimilate
+!
+! ---
+&obslst
+   obs_sla = 1
+   obs_arg = 1
+   obs_xbt = 1
+   obs_gld = 1
+   obs_tra = 0
+   obs_trd = 0
+   obs_vdr = 0
+   obs_gvl = 0
+   obs_sst = 0
+/
+!------------------------------------------------------------
+!
+! Namelist errlst
+!
+!             Observational data sets set-up
+!
+! ---
+!  err_from_file   - T-read error from obs file, F-compute error
+!  tim_dep_err     - T-apply temporal dependency of the error if err_from_file = F
+!  ztime_weigth    - Temporal decay (in days) for obs errors if tim_dep_err = T
+!  sla_sat_dep_err - T-apply sla satellite dependency of the error if err_from_file = F
+!  sla_hor_dep_err - T-apply sla spatial   dependency of the error if err_from_file = F
+!  sla_hor_dep_ecf - Corrective factor for horizontal error if sla_hor_dep_err = T
+!  obserr_sla_flname - horizontal dependent error file name if sla_hor_dep_err = T
+!  sla_sat_nu      - Number of SLA satellites if sla_sat_dep_err = T
+!  sla_sat_na      - Name   of SLA satellites if sla_sat_dep_err = T
+!  sla_sat_err     - Error  of SLA satellites if sla_sat_dep_err = T
+!  sla_err         - Error  of SLA if sla_sat_dep_err = F and sla_hor_dep_err = F
+!  ts_ver_dep_err  - T-apply vertical dependency of error to temperature and salinity
+!  obserr_ts_flname- T/S vertical error file name if ts_ver_dep_err = T
+!  tem_err         - Error  of Temperature if ts_ver_dep_err = F
+!  sal_err         - Error  of Salinity    if ts_ver_dep_err = F
+! ---
+&errlst
+   err_from_file     = .F.
+   tim_dep_err       = .F.
+   ztime_weigth      = 100.0
+   sla_sat_dep_err   = .F.
+   sla_hor_dep_err   = .F.
+   sla_hor_dep_ecf   = 1.0
+   obserr_sla_flname = 'SLA_repres.nc'
+   sla_sat_nu        = 18
+   sla_sat_na        = 'ERS1         ', 'ERS2         ', 'ENVISAT      ', 'GFO          ', 'JASON1       ',
+                       'JASON2       ', 'TP           ', 'CRYOSAT2     ', 'GEOSAT       ', 'ALTIKA       ',
+                       'JASON2N      ', 'JASON3       ', 'SENTINEL3A   ', 'JASON2G      ', 'SENTINEL3B   '
+                       'HY-2A        ', 'HY-2B        ', 'SENTINEL6A   '
+   sla_sat_err=         0.03          ,  0.03          ,  0.03          ,  0.03          ,  0.03          ,
+                        0.03          ,  0.03          ,  0.03          ,  0.03          ,  0.03          ,
+                        0.03          ,  0.03          ,  0.03          ,  0.03          ,  0.03
+                        0.03          ,  0.03          ,  0.03
+   sla_err           =  0.03
+   ts_ver_dep_err    = .F.
+   obserr_ts_flname  = 'insitu_errors.nc'
+   tem_err           = 0.2
+   sal_err           = 0.02
+/
+!------------------------------------------------------------
+!
+! Namelist thinning
+!
+!            Thinning
+!  thin_arg   -  Apply thinning to  ARG
+!  thin_gld   -  Apply thinning to  GLD
+!  thin_gvl   -  Apply thinning to  GVL
+!  thin_sla   -  Apply thinning to  SLA
+!  thin_sst   -  Apply thinning to  SST
+!  thin_tra   -  Apply thinning to  TRD
+!  thin_trd   -  Apply thinning to  TRA
+!  thin_vdr   -  Apply thinning to  VDR
+!  thin_xbt   -  Apply thinning to  XBT
+!  thin_tim   -  Time  window for averaging (sec.)
+!  thin_spc   -  Space window for averagind ( km )
+!
+! ---
+&thnlst
+   thin_arg   = .T.
+   thin_gld   = .T.
+   thin_gvl   = .T.
+   thin_sla   = .T.
+   thin_sst   = .F.
+   thin_tra   = .F.
+   thin_trd   = .F.
+   thin_vdr   = .F.
+   thin_xbt   = .T.
+   thin_tim   = 60.
+   thin_spc   =  5.
+/
+!------------------------------------------------------------
+!
+! Namelist qcklst
+!
+!            Quality check
+!
+!  qc_res          ! Absolute misfits quality control
+!  qc_conbgr       ! Background ratio quality control
+!  qc_eofbgr       ! Background ratio quality control based on EOFs
+!  qc_clm          ! Climatological   quality control
+!  qc_vert         ! Reject measurements if some observations above within the same profile were rejected
+!  qc_res_sla      ! Max. residual allowed for SLA          (if qc_res = T)
+!  qc_res_tem      ! Max. residual allowed for Temperature  (if qc_res = T)
+!  qc_res_sal      ! Max. residual allowed for Salinity     (if qc_res = T)
+!  qc_res_vel      ! Max. residual allowed for U/V velocity (if qc_res = T)
+!  qc_res_sst      ! Max. residual allowed for SST          (if qc_res = T)
+!  qc_res_dis      ! Max. residual allowed for Distance (Km)(if qc_res = T)
+!  qc_bgr_sla      ! Background error and Threshold ratio for SLA          (if qc_conbgr = T)
+!  qc_bgr_tem      ! Background error and Threshold ratio for Temperature  (if qc_conbgr = T)
+!  qc_bgr_sal      ! Background error and Threshold ratiofor Salinity      (if qc_conbgr = T)
+!  qc_bgr_vel      ! Background error and Threshold ratio for U/V velocity (if qc_conbgr = T)
+!  qc_bgr_sst      ! Background error and Threshold ratio for SST           (if qc_conbgr = T)
+!  qc_bgr_dis      ! Background error and Threshold ratio for Distance (Km) (if qc_conbgr = T)
+!  qc_clm_limT     ! Max Treshold allowed between observation and climatology for Temperature (if qc_clm =T)
+!  qc_clm_limS     ! Max Treshold allowed between observation and climatology for Salinity    (if qc_clm =T)
+!  qc_clm_flname   ! Filename for climatology used also for qc_eofbgr
+! ---
+&qcklst
+   qc_res      = .T.
+   qc_clm      = .F.
+   qc_vert     = .F.
+   qc_conbgr   = .F.
+   qc_eofbgr   = .F.
+   qc_res_sla  =  0.3
+   qc_res_tem  =  5.0
+   qc_res_sal  =  2.0
+   qc_res_vel  =  1.0
+   qc_res_sst  =  0.4
+   qc_res_dis  =  10.0
+   qc_bgr_sla  =  0.1, 0.64
+   qc_bgr_tem  =  1.0, 25.0
+   qc_bgr_sal  =  0.2, 25.0
+   qc_bgr_vel  =  0.2, 25.0
+   qc_bgr_sst  =  0.5, 11.0
+   qc_bgr_dis  =  2.0, 25.0
+   qc_clm_limT =  9.0
+   qc_clm_limS =  3.0
+   qc_clm_flname = 'climatology.nc'
+/
+!------------------------------------------------------------
+!
+! Namelist hublst
+! ---
+!
+!             Huber norm quality check
+!
+!  huberqc_arg   -  Apply Huber Norm QC to ARG
+!  huberqc_gld   -  Apply Huber Norm QC to GLD
+!  huberqc_gvl   -  Apply Huber Norm QC to GVL
+!  huberqc_sla   -  Apply Huber Norm QC to SLA
+!  huberqc_sst   -  Apply Huber Norm QC to SST
+!  huberqc_tra   -  Apply Huber Norm QC to TRD
+!  huberqc_trd   -  Apply Huber Norm QC to TRA
+!  huberqc_vdr   -  Apply Huber Norm QC to VDR
+!  huberqc_xbt   -  Apply Huber Norm QC to XBT
+!  huberqc_asymm -  T- Non-symmetric coefficients; F- Symmetric coefficients (if ANY of above)
+!  huberqc_L05   -  T- L2-L1 + L05 Norm, F- only L05 Norm (http://dx.doi.org/10.1016/j.ocemod.2016.06.011)
+!  huberqc_flname-  Coefficients' file name
+!  huberqc_iter  -  No. of iteration at which variational quality control start
+!
+! ---
+&hublst
+   huberqc_arg   = .F.
+   huberqc_gld   = .F.
+   huberqc_gvl   = .F.
+   huberqc_sla   = .F.
+   huberqc_sst   = .F.
+   huberqc_tra   = .F.
+   huberqc_trd   = .F.
+   huberqc_vdr   = .F.
+   huberqc_xbt   = .F.
+   huberqc_asymm = .T.
+   huberqc_L05   = .T.
+   huberqc_flname= 'hubernorm_limits_3dvar.nc'
+   huberqc_iter  = 10
+/
+!------------------------------------------------------------
+!
+! Namelist crjlst
+! ---
+!
+!            Coastal Rejection namelist
+!
+!  coastrej_arg    -  Apply coastal rejection to ARG
+!  coastrej_gld    -  Apply coastal rejection to GLD
+!  coastrej_gvl    -  Apply coastal rejection to GVL
+!  coastrej_sla    -  Apply coastal rejection to SLA
+!  coastrej_sst    -  Apply coastal rejection to SST
+!  coastrej_tra    -  Apply coastal rejection to TRD
+!  coastrej_trd    -  Apply coastal rejection to TRA
+!  coastrej_vdr    -  Apply coastal rejection to VDR
+!  coastrej_xbt    -  Apply coastal rejection to XBT
+!  coastrej_km_arg - Km from the coast ( if coastrej_arg = T )
+!  coastrej_km_gld - Km from the coast ( if coastrej_gld = T )
+!  coastrej_km_gvl - Km from the coast ( if coastrej_gvl = T )
+!  coastrej_km_sla - Km from the coast ( if coastrej_sla = T )
+!  coastrej_km_sst - Km from the coast ( if coastrej_sst = T )
+!  coastrej_km_tra - Km from the coast ( if coastrej_tra = T )
+!  coastrej_km_trd - Km from the coast ( if coastrej_trd = T )
+!  coastrej_km_vdr - Km from the coast ( if coastrej_vdr = T )
+!  coastrej_km_xbt - Km from the coast ( if coastrej_xbt = T )
+!
+!
+! ---
+&crjlst
+  coastrej_arg    = .F.
+  coastrej_gld    = .F.
+  coastrej_gvl    = .F.
+  coastrej_sla    = .T.
+  coastrej_sst    = .F.
+  coastrej_tra    = .F.
+  coastrej_trd    = .F.
+  coastrej_vdr    = .F.
+  coastrej_xbt    = .F.
+  coastrej_km_arg = 15.
+  coastrej_km_gld = 15.
+  coastrej_km_gvl = 15.
+  coastrej_km_sla = 15.
+  coastrej_km_sst = 15.
+  coastrej_km_tra = 15.
+  coastrej_km_trd = 15.
+  coastrej_km_vdr = 15.
+  coastrej_km_xbt = 15.
+/
+!------------------------------------------------------------
+!
+! Namelist drvlst
+! ---
+!
+!             Outer loop set-up
+!
+!  ntr     -  Number of outer iterations over grids
+!  prj     -  0 = lat/lon regular grid
+!  filter  -  Filter type:
+!	      1 = Recursive'
+!             2 = Diffusive
+!             3 = None
+!  grid    -  grid number in each iteration
+!  read_grd - Logical to read grids from files.
+!             See subroutine def_grd.f90
+!  ratio   -  Resolution ratio between the previous
+!             and the current grid
+!  mask    -  Mask type:
+!              1 - no land
+!              2 - 2d mask by coasts
+!              3 - 3d mask by bottom topography
+!  barmd   -  Run barotropic model on the grid
+!  balmd   -  Simplified balance operator based on dynamic height
+!  divda   -  Apply divergence damping on the grid
+!  divdi   -  Initialise corrections by divergence damping
+!  nneos   -  Equation of state:
+!             1 - constant exp_coef_t, exp_coef_t defined from namelist
+!             2 - alpha3d, beta3d compute from background
+!             3 - tl density and its adjoint
+!  eos_flname     - filename with T/S to compute Expantion/Contraction Coefficient (if nneos /= 1)
+!  ssh_unbalanced - unbalance component of eta (EOFs)
+!  exp_coef_t     - expansion coefficient for temperature
+!  exp_coef_s     - contraction coefficient for salinity
+!
+! ---
+&grdlst
+   ntr            =  1,
+   prj            =  0,
+   filter         =  2,
+   grid           =  1,   1,   1
+   ratio          =  1.,  1.,  1.
+   mask           =  3,   3,   3
+   barmd          =  1,   0,   0
+   balmd          =  0,   0,   0
+   divda          =  0,   1,   1
+   divdi          =  0,   1,   1
+   cntm           =  100, 40,  1
+   eos_flname     = 'background.nc'
+   nneos          =  1,   1,   1
+   ssh_unbalanced = .F., .F., .F.
+   exp_coef_t     = 0.24
+   exp_coef_s     = 0.74
+/
+!------------------------------------------------------------
+!
+! Namelist ctllst
+! ---
+!
+!             BFGS minimizers set-up
+!
+!  ctl_m   -  Number of copies saved in the minimizer
+!  ctl_tol -  Stopping criteria (absolute)
+!  ctl_per -  Stopping criteria (relative)
+!
+! ---
+&ctllst
+   ctl_m    = 5
+   ctl_tol  = 1.e-8
+   ctl_per  = 1.e-2
+/
+!------------------------------------------------------------
+!
+! Namelist rcflst
+! ---
+!
+!             Covariance constants
+!
+!  eof_flname - EOF filenema
+!  neof       - Number of vertical EOFs
+!  nreg       -  Number of regions
+!  rcf_L      -  Horizontal correlation radius
+!  rcf_loc    -  Horizontal radius of localization
+!  mld        -  1 - mixed layer depth, 0 - no
+! ---
+&covlst
+   eof_flname = 'eofs.nc'
+   neof     = 10
+   nreg     = 1
+   rcf_L    = 20000.
+   rcf_loc  = 1.
+   mld      = 0
+/
+!------------------------------------------------------------
+! Namelist diflst
+!---
+!
+!       Diffusive Filter namelist
+! Parameters should be the same of the one used for the computation of the weights
+!
+!  nt           = number of iteration for the diffusion filter
+!  rd_corr      = read correlation radius from file
+!  rx           = correlation radius in x  ( if not read from file )
+!  ry           = correlation radius in y  ( if not read from file )
+!  use_bc       = use boundary conditions
+!  bc_type      = type of boundary condition (if use_bc = .T. then choose NEUMANN/DIRICHLET)
+!  rd_wgh       = read weights from external file (if F compute analytically)
+!  wgh_flname   = Normalization factor filename
+!  crl_flname   = Horizontal correlation length filename
+!  use_cst      = use coastal distance to reduce the correlation radius
+!  cst_dis      = costal distance value ( if use_cst = .T. )
+&diflst
+   nt           = 5 !20
+   rd_corr      = .F.
+   rx           = 40000.0
+   ry           = 40000.0
+   use_bc       = .T.
+   bc_type      = 'NEUMANN' !'DIRICHLET'
+   rd_wgh       = .F.
+   wgh_flname   = 'weights.nc'
+   crl_flname   = 'dummy'
+   use_cst      = .T.
+   cst_dst      = 40000
+/
+!------------------------------------------------------------
+!
+! Namelist slalst
+! ---
+!
+!          SLA assimilation set-up
+!
+!  sla_dep -  Maximum depth for assimilation of sla
+!  sla_dsm -  Maximum distance between sla obs to be considered of the same track (km)
+!  unbias   = T-remove bias,      F-do not remove bias
+!  bias_at -  T-remove bias along track, F-remove global bias (ref=0) !if unbias = T
+!  sla_minobspt - Minimum number of observation per track (only bias_at = T)
+!
+! ---
+&slalst
+   sla_dep      = 100.
+   sla_minobspt = 4.
+   sla_dsm      = 40.
+   unbias       = .T.
+   bias_at      = .T.
+/
+!------------------------------------------------------------
+!
+! Namelist bmdlst
+! ---
+!
+!          Barotropic model set-up
+!
+!  bmd_dt  -  Time step
+!  bmd_ndy -  Number of days to integrate the model
+!  bmd_ady -  Number of days for averaging
+!  bmd_alp -  Weight for the trapezoidal scheme
+!  bmd_fc1 -  Horizontal friction for vorticity
+!  bmd_fc2 -  Horizontal friction for divergence
+!  bmd_ovr -  Overrelaxation
+!  bmd_resem - Stopping criteria
+!  bmd_ncnt - Maximum number of successive corrections
+!
+! ---
+&bmdlst
+  bmd_dt         = 7200 !3600.
+  bmd_ndy        = 3    !1.
+  bmd_ady        = 1    !0.5
+  bmd_alp        = 1.0
+  bmd_fc1        = 0.1 ! 0.1
+  bmd_fc2        = 0.2 ! 0.2
+  bmd_ovr        = 1.9
+  bmd_resem      = 5.e-2
+  bmd_ncnt       = 201
+/
+!------------------------------------------------------------
+!
+! Namelist adjck
+! ---
+!
+!          Adjoint check
+!
+!  bal_ck  - check simplified balance operator adjoint
+
+&adjcklst
+  bal_ck  = .F.
+  bmd_ck  = .F.
+  byg_ck  = .F.
+  dfl_ck  = .F.
+/
+!------------------------------------------------------------
+!
+! Namelist mpilst
+! ---
+!
+!          Set-up for mpi tiles
+!
+!  mpi_irm -  number of tiles in the x direction
+!  mpi_jrm -  number of tiles in the y direction
+!  mpi_thx -  number of RF threads in x direction
+!  mpi_thy -  number of RF threads in x direction
+!
+! ---
+&mpilst
+  mpi_irm   = @MPII@
+  mpi_jrm   = @MPIJ@
+  mpi_thx   = 10
+  mpi_thy   = 10
+/
+!------------------------------------------------------------
+!
+! Namelist I/O directories
+! ---
+!
+!          Directories for reading I/O
+!
+!  inp_dir - directory read input
+!
+! ---
+&iolst
+  inp_dir = "./"
+/
+!------------------------------------------------------------

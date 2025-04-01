@@ -1,48 +1,45 @@
-subroutine cnv_inn
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2006 Srdjan Dobricic, CMCC, Bologna                         !
-!                                                                          !
-!    This file is part of OceanVar.                                          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.       !
-!                                                                          !
-!---------------------------------------------------------------------------
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Convert w to correction in physical space                            !
+!> Convert w to correction in physical space                            
+!!
+!!
+!!
 !                                                                      !
-! Version 1: S.Dobricic 2006                                           !
+! Version 1: Srdjan Dobricic 2006                                      !
 !-----------------------------------------------------------------------
+SUBROUTINE cnv_inn
 
+   USE set_knd
+   USE obs_str
+   USE grd_str
+   USE eof_str
+   USE ctl_str
+   USE drv_str
 
- use set_knd
- use obs_str
- use grd_str
- use eof_str
- use ctl_str
- use drv_str
-
- implicit none
-
-!    drv%dda(drv%ktr) = drv%ddi(drv%ktr)
+   IMPLICIT NONE
 
 ! --------
 ! Convert the control vector to v
-   call cnv_ctv
-   call ver_hor
+   CALL cnv_ctv
+   CALL ver_hor
 
-end subroutine cnv_inn
+END SUBROUTINE cnv_inn

@@ -1,0 +1,55 @@
+# EXE: Specify the number of executable and their names and (absolute or relative) paths
+nexe=1
+OV ../bin/var_3d
+
+# NINPUT: Specify the number of input datasets, their names and their paths (these should be placed in different directories)
+ninput= 1
+nrm ../test_case
+
+# Namelist configuration:
+# Placeholder ids can be grouped so that they will be varied simultaneously across testing
+#
+# "varpergroup" contains a list of integers
+# The length of the list specifies the number of placeholder groups
+# For each group an integer specified the size of this group
+#
+# After "varpergroup" a whitespace should be placed
+# Then, for each group, one specifies:
+#       -The IDs of the placeholders
+#       -The reference names for the values to be substituted, any amount of values may be substituted at the placeholder values
+#        The separator for the substitutions should be the '|' character
+#       -One line for each placeholder, with the values to be substituted
+#
+# For example, we have two placeholder ids: "ex" and "ex2"
+# These correspond to the placeholders "@EX@" and  "@EX2@" in the namelist template
+# We want to substitute simultaneously three values of ex ("1 ", " 2 ", "3x") and ex2 ("he", "he2,he3", "1")
+# The reference names of these three values are "A", "B" and "C".
+#
+# Then the placeholder group should be specified as
+#ex ex2
+#A B C
+#1 | 2 |3x
+#he|he2,he3|1
+#
+# In the "varpergroup" field, a "2" should be added since this placeholdergroup consists of two placeholders
+# This group should be placed one whitespace apart from the previous placeholder group (or from varpergroup if it is represented by
+the first integer in the "varpergroup" field
+# the ordering of the integers of varpergroup must be consistent.
+
+varpergroup= 1 2
+
+filt
+DIF
+2
+
+bar bal
+BAR
+1,   1,   1
+0,   1,   1
+
+# MPI processs decomposition
+nproc= 4
+1x1
+1x4
+2x2
+4x1

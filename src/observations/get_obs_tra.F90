@@ -1,214 +1,198 @@
-subroutine get_obs_tra
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2007 Srdjan Dobricic, CMCC, Bologna, and                    !
-!                   Vincent Taillandier, Locean, Paris                     !
-!                                                                          !
-!    This file is part of OceanVar.                                        !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Load Argo trajectory observations                                    !
+!> Load Argo trajectory observations                                    
+!!
+!!
+!!
 !                                                                      !
 ! Version 1: S.Dobricic 2007                                           !
 !-----------------------------------------------------------------------
+SUBROUTINE get_obs_tra
 
- use set_knd
- use drv_str
- use grd_str
- use obs_str
- use mpi_str
+   USE set_knd
+   USE drv_str
+   USE grd_str
+   USE obs_str, ONLY : tra,  obs
+   USE mpi_str
 
- implicit none
+   IMPLICIT NONE
 
-  INTEGER(i4)   ::  k, ierr
-  INTEGER(i4)   ::  i1, j1, i, j
-  INTEGER(i8)   ::  ncc
-
+   INTEGER(i4)   ::  k, ierr
+   INTEGER(i4)   ::  i1, j1, i, j
+   INTEGER(i8)   ::  ncc
 
    tra%no = 0
    tra%nc = 0
    tra%ncs = 0
    tra%ncc = 0
 
-!  if(mpi%myrank.eq.0) then
+   OPEN (511,FILE=drv%inpdir//'/tra_obs.dat',FORM='unformatted',STATUS='old',ERR=1111)
 
-   
-    open(511,file='tra_obs.dat',form='unformatted',status='old',err=1111)
+   READ (511) tra%no, tra%nc, tra%nt, tra%im, tra%jm, tra%km, tra%dpt
 
-    read(511) tra%no, tra%nc, tra%nt, tra%im, tra%jm, tra%km, tra%dpt
+   WRITE (drv%dia,*) 'Number of Argo trajectory observations: ',  tra%no,tra%nc
+
+   IF (tra%no.EQ.0) THEN
+      CLOSE (511)
+      RETURN
+   ENDIF
 
 ! ---
-! Allocate memory for observations 
+! Allocate memory for observations
+   ALLOCATE ( tra%ino(tra%no), tra%flg(tra%no), tra%flc(tra%no) )
+   ALLOCATE ( tra%loi(tra%no), tra%lai(tra%no), tra%tim(tra%no), tra%dtm(tra%no) )
+   ALLOCATE ( tra%lof(tra%no), tra%laf(tra%no) )
+   ALLOCATE ( tra%err(tra%no) )
+   ALLOCATE ( tra%lob(tra%nt+1,tra%no), tra%lab(tra%nt+1,tra%no) )
+   ALLOCATE ( tra%loa(tra%no), tra%laa(tra%no) )
+   ALLOCATE ( tra%xob(tra%no), tra%xmn(tra%nt+1,tra%no), tra%erx(tra%no) )
+   ALLOCATE ( tra%yob(tra%no), tra%ymn(tra%nt+1,tra%no), tra%ery(tra%no) )
+   ALLOCATE ( tra%rex(tra%no), tra%inx(tra%no) )
+   ALLOCATE ( tra%rey(tra%no), tra%iny(tra%no) )
+   ALLOCATE ( tra%xtl(tra%no), tra%ytl(tra%no) )
+   ALLOCATE ( tra%xtl_ad(tra%no), tra%ytl_ad(tra%no) )
+   ALLOCATE ( tra%fls(tra%no) )
+   ALLOCATE ( tra%rsx(tra%no) )
+   ALLOCATE ( tra%rsy(tra%no) )
+   ALLOCATE ( tra%isx(tra%no) )
+   ALLOCATE ( tra%isy(tra%no), tra%eve(tra%no) )
 
-   write(drv%dia,*) 'Number of Argo trajectory observations: ',  tra%no,tra%nc
+   tra%fls(:) = 0_i8
+   tra%rsx(:) = 0.0_r8
+   tra%isx(:) = 0.0_r8
+   tra%rsy(:) = 0.0_r8
+   tra%isy(:) = 0.0_r8
+   tra%eve(:) = 999
 
+   READ (511)  tra%ino, tra%flg, tra%tim, tra%dtm,      &
+      tra%loi, tra%lai, tra%lof, tra%laf,      &
+      tra%err, tra%lob, tra%lab,               &
+      tra%xob, tra%xmn, tra%erx,               &
+      tra%yob, tra%ymn, tra%ery
 
-   if(tra%no.eq.0)then
-      close(511)
-      return
-   endif
-
-   allocate ( tra%ino(tra%no), tra%flg(tra%no), tra%flc(tra%no))
-   allocate ( tra%loi(tra%no), tra%lai(tra%no), tra%tim(tra%no), tra%dtm(tra%no))
-   allocate ( tra%lof(tra%no), tra%laf(tra%no))
-   allocate ( tra%err(tra%no))
-   allocate ( tra%lob(tra%nt+1,tra%no), tra%lab(tra%nt+1,tra%no) )
-   allocate ( tra%loa(tra%no), tra%laa(tra%no) )
-   allocate ( tra%xob(tra%no), tra%xmn(tra%nt+1,tra%no), tra%erx(tra%no) )
-   allocate ( tra%yob(tra%no), tra%ymn(tra%nt+1,tra%no), tra%ery(tra%no) )
-
-   allocate ( tra%rex(tra%no), tra%inx(tra%no))
-   allocate ( tra%rey(tra%no), tra%iny(tra%no))
-   allocate ( tra%xtl(tra%no), tra%ytl(tra%no) )
-   allocate ( tra%xtl_ad(tra%no), tra%ytl_ad(tra%no) )
-   allocate ( tra%fls(tra%no))
-   allocate ( tra%rsx(tra%no))
-   allocate ( tra%rsy(tra%no))
-   allocate ( tra%isx(tra%no))
-   allocate ( tra%isy(tra%no))
-
-   tra%fls(:) = 0.0
-   tra%rsx(:) = 0.0
-   tra%isx(:) = 0.0
-   tra%rsy(:) = 0.0
-   tra%isy(:) = 0.0
-
-
-   read(511)  tra%ino, tra%flg, tra%tim, tra%dtm,      &
-              tra%loi, tra%lai, tra%lof, tra%laf,      &
-              tra%err, tra%lob, tra%lab,               &
-              tra%xob, tra%xmn, tra%erx,               &
-              tra%yob, tra%ymn, tra%ery
-
-   close(511)
+   CLOSE (511)
 
 ! ---
 ! Initialise quality flag
-   if(obs%tra.eq.0)then
-    do j=1,tra%no
-     if(tra%flg(j).ne.0)tra%flg(j)=-1
-    enddo
-   endif
+   IF ( obs%tra .EQ. 0 ) THEN
+      DO j = 1,tra%no
+         IF (tra%flg(j) .NE. 0) tra%flg(j)=-1
+      ENDDO
+      WRITE (drv%dia,*)'Bad quality flag ',obs%tra
+   ENDIF
    tra%flc(:) = tra%flg(:)
 
-    do j=1,tra%no
-     tra%rex(j) = tra%xob(j) - tra%xmn(tra%nt+1,j)
-     tra%rey(j) = tra%yob(j) - tra%ymn(tra%nt+1,j)
-     tra%loa(j) = tra%lob(tra%nt+1,j)
-     tra%laa(j) = tra%lab(tra%nt+1,j)
-    enddo
+   DO j = 1,tra%no
+      tra%rex(j) = tra%xob(j) - tra%xmn(tra%nt+1,j)
+      tra%rey(j) = tra%yob(j) - tra%ymn(tra%nt+1,j)
+      tra%loa(j) = tra%lob(tra%nt+1,j)
+      tra%laa(j) = tra%lab(tra%nt+1,j)
+   ENDDO
 
-
-! residual check
-  do j=1,tra%no
-   if(abs(tra%rex(j)).gt.10. .or. abs(tra%rey(j)).gt.10.) tra%flg(j) = 0
-  enddo
 
 ! ---
 ! Set quality flags to zero on all processors except the first one
-
-  if(mpi%myrank.gt.0) tra%flg(:) = 0
+   IF ( mpi%myrank .GT. 0 ) tra%flg(:) = 0
 
 ! ---
 ! Count good observations
-    tra%nc = 0
-  do k=1,tra%no
-   if(tra%flg(k).eq.1)then
-    tra%nc = tra%nc + 1
-   endif
-  enddo
+   tra%nc = 0
+   DO k = 1,tra%no
+      IF ( tra%flg(k) .EQ. 1 ) THEN
+         tra%nc = tra%nc + 1
+      ENDIF
+   ENDDO
 
-  tra%flc(:) = tra%flg(:)
+   tra%flc(:) = tra%flg(:)
+   WHERE ( tra%flc .EQ. 0 ) tra%eve = 1
 
-  tra%ncc = tra%nc
+   tra%ncc = tra%nc
 
-   write(drv%dia,*) 'Number of good Argo trajectory observations: ',  tra%nc
+   WRITE (drv%dia,*) 'Number of good Argo trajectory observations after reading: ',  tra%nc
 
+   IF ( mpi%nproc .GT. 1 ) CALL mpi_bcast( tra%ncc, 1, mpi%i8, 0, mpi%comm, ierr)
 
-  if(mpi%nproc.gt.1) call mpi_bcast( tra%ncc, 1, mpi%i8, 0, mpi%comm, ierr)
-
-1111 continue
-
+1111 CONTINUE
 
 
-end subroutine get_obs_tra
-
-subroutine int_par_tra
-
+END SUBROUTINE get_obs_tra
 !-----------------------------------------------------------------------
 !                                                                      !
-! Get interpolation parameters for a grid                              !
+!> Get interpolation parameters for a grid                              
 !                                                                      !
 ! Version 1: S.Dobricic 2006                                           !
 !-----------------------------------------------------------------------
+SUBROUTINE int_par_tra
 
- use set_knd
- use grd_str
- use obs_str
- use mpi_str
+   USE set_knd
+   USE drv_str
+   USE grd_str
+   USE obs_str
+   USE mpi_str
 
- implicit none
+   IMPLICIT NONE
 
-  INTEGER(i4)   ::  img, jmg, k, km
+   INTEGER(i4)   ::  img, jmg, k, km
 
-  if(tra%no.eq.0) return
+   IF ( tra%no .EQ. 0 ) RETURN
 
-   if(mpi%myrank.eq.0) then
-    img = grd%img
-    jmg = grd%jmg
-   else
-    img = 1
-    jmg = 1
-   endif
+   IF ( mpi%myrank .EQ. 0 ) THEN
+      img = grd%img
+      jmg = grd%jmg
+   ELSE
+      img = 1
+      jmg = 1
+   ENDIF
 
-   allocate ( tra%umn(img,jmg), tra%vmn(img,jmg) )
-   allocate( tra%uvl(img,jmg), tra%vvl(img,jmg) )
-   allocate( tra%uvl_ad(img,jmg), tra%vvl_ad(img,jmg) )
-   allocate ( tra%dx(img,jmg), tra%dy(img,jmg) )
+   ALLOCATE ( tra%umn(img,jmg), tra%vmn(img,jmg) )
+   ALLOCATE( tra%uvl(img,jmg), tra%vvl(img,jmg) )
+   ALLOCATE( tra%uvl_ad(img,jmg), tra%vvl_ad(img,jmg) )
+   ALLOCATE ( tra%dx(img,jmg), tra%dy(img,jmg) )
 
-  if(mpi%myrank.eq.0) then
-    open(511,file='tra_umn.dat',form='unformatted',status='old')
-    read(511)  tra%umn
-    read(511)  tra%vmn
-    close(511)
-  endif
+   IF ( mpi%myrank .EQ. 0 ) THEN
+      OPEN (511,FILE=drv%inpdir//'/tra_umn.dat',FORM='unformatted',STATUS='old')
+      READ (511)  tra%umn
+      READ (511)  tra%vmn
+      CLOSE (511)
+   ENDIF
 
 
-    k   = 1
-    km  = 1
+   k   = 1
+   km  = 1
 
-   if(mpi%nproc.gt.1)then
-      call gth_mpi( img, jmg, k, km, grd%dx, tra%dx)
-      call gth_mpi( img, jmg, k, km, grd%dy, tra%dy)
-   else
+   IF (mpi%nproc.GT.1) THEN
+      CALL gth_mpi( img, jmg, k, km, grd%dx, tra%dx)
+      CALL gth_mpi( img, jmg, k, km, grd%dy, tra%dy)
+   ELSE
       tra%dx(:,:) = grd%dx(:,:)
       tra%dy(:,:) = grd%dy(:,:)
-   endif
+   ENDIF
 
    tra%lev = 1
-   do k=1,grd%km-1
-    if( tra%dpt.ge.grd%dep(k) .and. tra%dpt.lt.grd%dep(k+1) ) tra%lev = k
-   enddo
+   DO k = 1,grd%km-1
+      IF ( tra%dpt .GE. grd%dep(k) .AND. tra%dpt .LT. grd%dep(k+1) ) tra%lev = k
+   ENDDO
 
-  tra%inx(:) = 0.0
-  tra%iny(:) = 0.0
+   tra%inx(:) = 0.0_r8
+   tra%iny(:) = 0.0_r8
 
-
-end subroutine int_par_tra
+END SUBROUTINE int_par_tra

@@ -1,98 +1,94 @@
-subroutine rdmxd
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2006 Srdjan Dobricic, CMCC, Bologna                         !
-!                                                                          !
-!    This file is part of OceanVar.                                          !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.       !
-!                                                                          !
-!--------------------------------------------------------------------------- 
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! READ parameters of the MFS_16_72 grid                                !
-!                                                                      !
-! Version 1: S.Dobricic 2006                                           !
-! This routine will have effect only if compiled with netcdf library.  !
+!> Read Mix Layer Depth                                                 
+!!                                                                      
+!!                                                                      
+!!                                                                      
+! Version 1: Srdjan Dobricic 2006                                       !
 !-----------------------------------------------------------------------
+SUBROUTINE rdmxd
 
-  use set_knd
-  use drv_str
-  use grd_str
-  use eof_str
-  use mpi_str
-  use netcdf
+   USE set_knd
+   USE drv_str
+   USE grd_str
+   USE eof_str
+   USE mpi_str
+   USE netcdf
 
-  implicit none
+   IMPLICIT NONE
 
-  INTEGER(i4)                :: stat, ncid, idvar,k, ierr, i, j
-  INTEGER(i4)                :: start(3), count(3)
-  real(r4), ALLOCATABLE      :: x3(:,:,:), x2(:,:), x1(:)
+   INTEGER(i4)                :: stat, ncid, idvar,k, ierr, i, j
+   INTEGER(i4)                :: start(3), count(3)
+   INTEGER(i4), ALLOCATABLE   :: x2(:,:)
 
+   IF ( drv%kts.EQ.1 .AND. drv%nts.EQ.2 .AND. ros%mld.EQ.1 ) THEN
 
- if( drv%kts.eq.1 .and. drv%nts.eq.2 .and. ros%mld.eq.1 ) then
+      stat = NF90_OPEN(drv%inpdir//'/'//'mldn.nc', NF90_NOWRITE, ncid)
+      IF (stat /= NF90_NOERR) CALL netcdf_err(stat)
 
-    stat = nf90_open('mldn.nc', NF90_NOWRITE, ncid)
-    if (stat /= nf90_noerr) call netcdf_err(stat)
-
-     ALLOCATE ( x2(1-grd%ias:grd%im+grd%iae,1-grd%jas:grd%jm+grd%jae)) 
+      ALLOCATE ( x2(1-grd%ias:grd%im+grd%iae,1-grd%jas:grd%jm+grd%jae) )
 
       start(1) = grd%igs-grd%ias
       start(2) = grd%jgs-grd%jas
       start(3) = 1
       count(1) = grd%im + grd%ias + grd%iae
       count(2) = grd%jm + grd%jas + grd%jae
-      count(3) = 1 !grd%km
+      count(3) = 1 
 
-      stat = nf90_inq_varid (ncid, 'mldd', idvar)
-       if (stat /= nf90_noerr) call netcdf_err(stat)
-      stat = nf90_get_var (ncid,idvar,x2,start,count)
-      if (stat /= nf90_noerr) call netcdf_err(stat)
+      stat = NF90_INQ_VARID (ncid, 'mldd', idvar)
+      IF (stat /= NF90_NOERR) CALL netcdf_err(stat)
+      stat = NF90_GET_VAR (ncid,idvar,x2,start,count)
+      IF (stat /= NF90_NOERR) CALL netcdf_err(stat)
       grd%mxd(:,:) =  x2(:,:)
 
-    DEALLOCATE ( x2 )
+      DEALLOCATE ( x2 )
 
-    stat = nf90_close(ncid)
+      stat = NF90_CLOSE(ncid)
 
 
+      DO j = 1-grd%jas,grd%jm+grd%jae
+         DO i = 1-grd%ias,grd%im+grd%iae
 
-   do j = 1-grd%jas,grd%jm+grd%jae
-    do i = 1-grd%ias,grd%im+grd%iae
+            grd%mxd(i,j) = MAX(2,MIN(grd%mxd(i,j),grd%km-1))
 
-       grd%mxd(i,j) = max(2,min(grd%mxd(i,j),grd%km-1))
+            DO k = 1,grd%mxd(i,j)-1
+               grd%lcl(i,j,k) = 1.0_r8
+            ENDDO
+            k = grd%mxd(i,j)
+            grd%lcl(i,j,k) = 0.5_r8
+            DO k = grd%mxd(i,j)+1,grd%km
+               grd%lcl(i,j,k) = 0.0_r8
+            ENDDO
 
-      do k=1,grd%mxd(i,j)-1
-       grd%lcl(i,j,k) = 1.0
-      enddo
-         k=grd%mxd(i,j)
-       grd%lcl(i,j,k) = 0.5
-      do k=grd%mxd(i,j)+1,grd%km
-       grd%lcl(i,j,k) = 0.0
-      enddo
+         ENDDO
+      ENDDO
 
-    enddo
-   enddo
+   ELSE
 
- else
+      grd%lcl(:,:,:) = 1.0_r8
+      WRITE (drv%dia,*)'Mixlayer loc=1'
 
-      grd%lcl(:,:,:) = 1.0
-      write(*,*)'Mixlayer loc=1'
+   ENDIF
 
- endif
-
-end subroutine rdmxd
+END SUBROUTINE rdmxd
 
 

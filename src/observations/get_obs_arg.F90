@@ -1,64 +1,62 @@
-subroutine get_obs_arg
-
-!---------------------------------------------------------------------------
-!                                                                          !
-!    Copyright 2006 Srdjan Dobricic, CMCC, Bologna                         !
-!                                                                          !
-!    This file is part of OceanVar.                                        !
-!                                                                          !
-!    OceanVar is free software: you can redistribute it and/or modify.     !
-!    it under the terms of the GNU General Public License as published by  !
-!    the Free Software Foundation, either version 3 of the License, or     !
-!    (at your option) any later version.                                   !
-!                                                                          !
-!    OceanVar is distributed in the hope that it will be useful,           !
-!    but WITHOUT ANY WARRANTY; without even the implied warranty of        !
-!    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         !
-!    GNU General Public License for more details.                          !
-!                                                                          !
-!    You should have received a copy of the GNU General Public License     !
-!    along with OceanVar.  If not, see <http://www.gnu.org/licenses/>.     !
-!                                                                          !
-!---------------------------------------------------------------------------
-
+!======================================================================
+!
+! This file is part of Oceanvar.
+!
+!  Copyright (C) 2025 OceanVar System Team ( oceanvar@cmcc.it )
+!
+! This program is free software: you can redistribute it and/or modify
+! it under the terms of the GNU General Public License as published by
+! the Free Software Foundation, either version 3 of the License, or
+! any later version (GPL-3.0-or-later).
+!
+! This program is distributed in the hope that it will be useful,
+! but WITHOUT ANY WARRANTY; without even the implied warranty of
+! MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+! GNU General Public License for more details.
+!
+! You should have received a copy of the GNU General Public License
+! along with this program. If not, see <https://www.gnu.org/licenses/>.
+!======================================================================
 !-----------------------------------------------------------------------
 !                                                                      !
-! Load ARGO observations                                               !
+!> Load ARGO observations                                               
+!!
+!!
+!!
 !                                                                      !
-! Version 1: S.Dobricic 2006                                           !
+! Version 1:   Srdjan Dobricic 2006                                    !
+!              Mario Adani     2023                                    !
 !-----------------------------------------------------------------------
+SUBROUTINE get_obs_arg
 
- use set_knd
- use drv_str
- use grd_str
- use obs_str
- use mpi_str
+   USE set_knd
+   USE drv_str
+   USE grd_str
+   USE obs_str, ONLY : arg,  obs
 
- implicit none
+   IMPLICIT NONE
 
-  INTEGER(i4)   ::  k, ierr
-  INTEGER(i4)   ::  i1, kk, i
-  REAL          ::  cnti
+   INTEGER(i4)   ::  k, ierr
+   INTEGER(i4)   ::  i1, kk, i
+   REAL          ::  cnti
+
+   arg%no = 0_i8
+   arg%nc = 0_i8
 
 
-    arg%no = 0
-    arg%nc = 0
+   OPEN (511,FILE=drv%inpdir//'/arg_mis.dat',FORM='unformatted',STATUS='old',ERR=1111)
 
-   
-  open(511,file='arg_mis.dat',form='unformatted',status='old',err=1111)
+   READ (511) arg%no
+
+   WRITE (drv%dia,*)' --- No of ARGO obs: ',arg%no
+
+   IF ( arg%no .EQ. 0 ) THEN
+      CLOSE (511)
+      RETURN
+   ENDIF
 
 ! ---
-! Allocate memory for observations 
-
-   read(511) arg%no
-
-   write(drv%dia,*)' --- No of ARGO obs: ',arg%no
-
-   if(arg%no.eq.0)then
-      close(511)
-      return
-   endif
-
+! Allocate memory for observations
    ALLOCATE ( arg%ino(arg%no), arg%flg(arg%no), arg%flc(arg%no), arg%par(arg%no))
    ALLOCATE ( arg%lon(arg%no), arg%lat(arg%no), arg%dpt(arg%no), arg%tim(arg%no))
    ALLOCATE ( arg%val(arg%no), arg%bac(arg%no), arg%inc(arg%no))
@@ -69,222 +67,193 @@ subroutine get_obs_arg
    ALLOCATE ( arg%pq1(arg%no), arg%pq2(arg%no), arg%pq3(arg%no), arg%pq4(arg%no))
    ALLOCATE ( arg%pq5(arg%no), arg%pq6(arg%no), arg%pq7(arg%no), arg%pq8(arg%no))
    ALLOCATE ( arg%rss(arg%no), arg%ins(arg%no))
-   ALLOCATE ( arg%fls(arg%no))
+   ALLOCATE ( arg%fls(arg%no), arg%eve(arg%no))
 
+   arg%flc(:) = 0_i8
+   arg%inc(:) = 0.0_r8
+   arg%bia(:) = 0.0_r8
+   arg%b_a(:) = 0.0_r8
+   arg%pq1(:) = 0.0_r8
+   arg%pq2(:) = 0.0_r8
+   arg%pq3(:) = 0.0_r8
+   arg%pq4(:) = 0.0_r8
+   arg%pq5(:) = 0.0_r8
+   arg%pq6(:) = 0.0_r8
+   arg%pq7(:) = 0.0_r8
+   arg%pq8(:) = 0.0_r8
+   arg%rss(:) = 0.0_r8
+   arg%ins(:) = 0.0_r8
+   arg%fls(:) = 0_i8
+   arg%eve(:) = 999_i8
 
+   READ (511)                                               &
+      arg%ino(1:arg%no), arg%flg(1:arg%no), arg%par(1:arg%no) &
+      ,arg%lon(1:arg%no), arg%lat(1:arg%no)                    &
+      ,arg%dpt(1:arg%no), arg%tim(1:arg%no)                    &
+      ,arg%val(1:arg%no), arg%bac(1:arg%no)                    &
+      ,arg%err(1:arg%no), arg%res(1:arg%no)                    &
+      ,arg%ib(1:arg%no), arg%jb(1:arg%no), arg%kb(1:arg%no)    &
+      ,arg%pb(1:arg%no), arg%qb(1:arg%no), arg%rb(1:arg%no)
+   CLOSE (511)
 
-   arg%rss(:) = 0.0
-   arg%ins(:) = 0.0
-   arg%fls(:) = 0.0
-   arg%bia(:) = 0.0
+   arg%nc = 0
+   DO k=1,arg%no
+      IF (arg%flg(k).EQ.1 )arg%nc = arg%nc+1
+   ENDDO
 
-       read (511)                                               &
-        arg%ino(1:arg%no), arg%flg(1:arg%no), arg%par(1:arg%no) &
-       ,arg%lon(1:arg%no), arg%lat(1:arg%no)                    &
-       ,arg%dpt(1:arg%no), arg%tim(1:arg%no)                    &
-       ,arg%val(1:arg%no), arg%bac(1:arg%no)                    &
-       ,arg%err(1:arg%no), arg%res(1:arg%no)                    &
-       ,arg%ib(1:arg%no), arg%jb(1:arg%no), arg%kb(1:arg%no)    &
-       ,arg%pb(1:arg%no), arg%qb(1:arg%no), arg%rb(1:arg%no)
-    close(511)
-
-    arg%nc = 0
-  do k=1,arg%no
-   if(arg%flg(k).eq.1 )arg%nc = arg%nc+1
-  enddo
-!  do k=1,arg%no
-!      write(*,*)                                               &
-!        arg%ino(k), arg%flg(k), arg%par(k) &
-!       ,arg%lon(k), arg%lat(k)                    &
-!       ,arg%dpt(k), arg%tim(k)                    &
-!       ,arg%val(k), arg%bac(k)                    &
-!       ,arg%err(k), arg%res(k)                    &
-!       ,arg%ib(k), arg%jb(k), arg%kb(k)    &
-!       ,arg%pb(k), arg%qb(k), arg%rb(k)
-!  enddo
+   WRITE (drv%dia,*) 'Number of good ARGO observations after reading: ',  arg%nc
 
 ! ---
 ! Initialise quality flag
-   if(obs%arg.eq.0) arg%flg(:) = -1
-   if(obs%arg.eq.0) write(drv%dia,*)'Bad quality flag ',obs%arg
+   IF  ( obs%arg .EQ. 0 ) THEN
+      arg%flg(:) = -1
+      WRITE (drv%dia,*)'Bad quality flag ',obs%arg
+   ENDIF
 
 ! ---
-! Vertical interpolation parameters
-    do k = 1,arg%no
-     if(arg%flg(k).eq.1)then
-       arg%kb(k) = grd%km-1
-     do kk = 1,grd%km-1
-      if( arg%dpt(k).ge.grd%dep(kk) .and. arg%dpt(k).lt.grd%dep(kk+1) ) then
-       arg%kb(k) = kk
-       arg%rb(k) = (arg%dpt(k) - grd%dep(kk)) / (grd%dep(kk+1) - grd%dep(kk))
-      endif
-     enddo
-     endif
-    enddo
-
-
-! residual check
-  do k=1,arg%no
-   if(arg%par(k).eq.1 .and. abs(arg%res(k)).gt.5.0) arg%flg(k) = 0
-   if(arg%par(k).eq.2 .and. abs(arg%res(k)).gt.2.0) arg%flg(k) = 0
-!   if(arg%par(k).eq.1 .and. abs(arg%res(k)).gt.5.0) write(drv%dia,*)'ARGOn ',k, arg%res(k),'Temp'
-!   if(arg%par(k).eq.2 .and. abs(arg%res(k)).gt.2.0) write(drv%dia,*)'ARGOn ',k, arg%res(k),'Salt'
-!   if(arg%par(k).eq.1) arg%err(k) = 0.1
-!   if(arg%par(k).eq.2) arg%err(k) = 0.1
-!   if(arg%tim(k).gt.0.4) arg%flg(k) = 0
-!!   if(arg%lat(k).gt.44) arg%flg(k) = 0
-  enddo
-
-    go to 1000
-! ---
-! Thin observations
-    do k = 1,arg%no-1
-     if(arg%flg(k).eq.1)then
-         kk = k + 1
-         cnti = 1.
-       do while(kk.le.arg%no .and. arg%kb(k).eq.arg%kb(min(kk,arg%no)) .and.  arg%flg(min(kk,arg%no)).eq.1)
-         arg%val(k) = arg%val(k) + arg%val(kk)
-         arg%bac(k) = arg%bac(k) + arg%bac(kk)
-         arg%res(k) = arg%res(k) + arg%res(kk)
-         arg%dpt(k) = arg%dpt(k) + arg%dpt(kk)
-         arg%flg(kk) = 0
-         cnti = cnti + 1.
-         kk = kk + 1
-       enddo
-         arg%val(k) = arg%val(k)/cnti
-         arg%bac(k) = arg%bac(k)/cnti
-         arg%res(k) = arg%res(k)/cnti
-         arg%dpt(k) = arg%dpt(k)/cnti
-         arg%rb(k) = (arg%dpt(k) - grd%dep(arg%kb(k))) / (grd%dep(arg%kb(k)+1) - grd%dep(arg%kb(k)))
-     endif
-    enddo
-
-1000 continue
+! Vertical interpolation PARAMETERs
+   DO k = 1,arg%no
+      IF ( arg%flg(k) .EQ. 1 ) THEN
+         arg%kb(k) = grd%km-1
+         DO kk = 1,grd%km-1
+            IF ( arg%dpt(k) .GE. grd%dep(kk) .AND. arg%dpt(k) .LT. grd%dep(kk+1) ) THEN
+               arg%kb(k) = kk
+               arg%rb(k) = (arg%dpt(k) - grd%dep(kk)) / (grd%dep(kk+1) - grd%dep(kk))
+            ENDIF
+         ENDDO
+      ENDIF
+   ENDDO
 
 ! ---
 ! Count good observations
-    arg%nc = 0
-  do k=1,arg%no
-   if(arg%flg(k).eq.1)then
-    arg%nc = arg%nc + 1
-   else
-    arg%bia(k) = 0.
-    arg%res(k) = 0.
-    arg%inc(k) = 0.
-    arg%b_a(k) = 0.
-    arg%pq1(k) = 0.
-    arg%pq2(k) = 0.
-    arg%pq3(k) = 0.
-    arg%pq4(k) = 0.
-    arg%pq5(k) = 0.
-    arg%pq6(k) = 0.
-    arg%pq7(k) = 0.
-    arg%pq8(k) = 0.
-   endif
-  enddo
-
-  arg%flc(:) = arg%flg(:)
-
-
-1111 continue
-
-end subroutine get_obs_arg
-
-
-
-subroutine int_par_arg
-
-!-----------------------------------------------------------------------
-!                                                                      !
-! Get interpolation parameters for a grid                              !
-!                                                                      !
-! Version 1: S.Dobricic 2006                                           !
-!-----------------------------------------------------------------------
-
- use set_knd
- use drv_str
- use grd_str
- use obs_str
- use mpi_str
-
- implicit none
-
-  INTEGER(i4)   ::  i, k,kk, ierr
-  INTEGER(i4)   ::  i1, j1, k1, idep
-  INTEGER(i8)   ::  klev
-  REAL(r8)      ::  p1, q1, r1
-  REAL(r8)      ::  msk4, div_x, div_y, rmn
-
-
-  rmn = 1.e-6
-
- if(arg%no.gt.0) then
+   arg%nc = 0
+   DO k = 1,arg%no
+      IF ( arg%flg(k) .EQ. 1 ) THEN
+         arg%nc = arg%nc + 1
+      ELSE
+         arg%bia(k) = 0.
+         arg%res(k) = 0.
+         arg%inc(k) = 0.
+         arg%b_a(k) = 0.
+         arg%pq1(k) = 0.
+         arg%pq2(k) = 0.
+         arg%pq3(k) = 0.
+         arg%pq4(k) = 0.
+         arg%pq5(k) = 0.
+         arg%pq6(k) = 0.
+         arg%pq7(k) = 0.
+         arg%pq8(k) = 0.
+      ENDIF
+   ENDDO
 
    arg%flc(:) = arg%flg(:)
+   WHERE ( arg%flc .EQ. 0 ) arg%eve = 1
 
+1111 CONTINUE
+
+END SUBROUTINE get_obs_arg
+!-----------------------------------------------------------------------
+!                                                                      !
+!> Get interpolation parameters for a grid                            
+!!
+!!
+!!
+!                                                                      !
+! Version 1: Srdjan Dobricic 2006                                      !
+!            Mario Adani     2023                                      !
+!-----------------------------------------------------------------------
+SUBROUTINE int_par_arg
+
+   USE set_knd
+   USE drv_str
+   USE grd_str
+   USE obs_str
+
+   IMPLICIT NONE
+
+   INTEGER(i4)   ::  i, k,kk, ierr
+   INTEGER(i4)   ::  i1, j1, k1, idep
+   INTEGER(i8)   ::  klev
+   REAL(r8)      ::  p1, q1, r1
+   REAL(r8)      ::  msk4, div_x, div_y, rmn
+
+   rmn = 1.e-6
+
+   IF ( arg%no .GT. 0 ) THEN
+
+      arg%flc(:) = arg%flg(:)
 ! ---
 ! Adjust longitudes
-      if(grd%bwst.gt.180.)then
-        do k=1,arg%no
-         if( arg%lon(k).lt.0.0)then
-            arg%lon(k) = arg%lon(k) + 360.
-         endif
-        enddo
-      endif
-
+      IF ( grd%bwst .GT. 180. ) THEN
+         DO k = 1,arg%no
+            IF ( arg%lon(k) .LT. 0.0_r8 ) THEN
+               arg%lon(k) = arg%lon(k) + 360.
+            ENDIF
+         ENDDO
+      ENDIF
 ! ---
-! Horizontal interpolation parameters
-
-  call int_obs_hor ( arg%no, arg%lat, arg%lon, arg%flc, arg%ib, arg%jb, arg%pb, arg%qb)
-
+! Horizontal interpolation PARAMETERs
+      CALL int_obs_hor ( arg%no, arg%lat, arg%lon, arg%flc, arg%eve, arg%ib, arg%jb, arg%pb, arg%qb)
 ! ---
 ! Undefine masked for multigrid
-    do k = 1,arg%no
-     if(arg%flc(k).eq.1)then
-      i1 = arg%ib(k)
-      j1 = arg%jb(k)
-      idep = arg%kb(k)+1
-      msk4 = grd%msk(i1,j1,idep) + grd%msk(i1+1,j1,idep) + grd%msk(i1,j1+1,idep) + grd%msk(i1+1,j1+1,idep)
-      if(msk4.lt.1.) arg%flc(k) = 0
-     endif
-    enddo
+      DO k = 1,arg%no
+         IF ( arg%flc(k) .EQ. 1 ) THEN
+            i1 = arg%ib(k)
+            j1 = arg%jb(k)
+            idep = arg%kb(k)+1
+            msk4 = grd%msk(i1,j1,idep) + grd%msk(i1+1,j1,idep) + grd%msk(i1,j1+1,idep) + grd%msk(i1+1,j1+1,idep)
+            IF ( msk4 .LT. 1. ) THEN
+               arg%flc(k) = 0
+               arg%eve(k) = 3
+            ENDIF
+         ENDIF
+      ENDDO
 
 ! ---
 ! Horizontal interpolation parameters for each masked grid
-       do k = 1,arg%no
-        if(arg%flc(k) .eq. 1) then
+      DO k = 1,arg%no
+         IF ( arg%flc(k) .EQ. 1 ) THEN
 
-          klev = arg%kb(k)
-          call int_obs_pq( arg%ib(k), arg%jb(k), klev, arg%pb(k), arg%qb(k),  &
-                           arg%pq1(k), arg%pq2(k), arg%pq3(k), arg%pq4(k))
-          klev = arg%kb(k) + 1
-          call int_obs_pq( arg%ib(k), arg%jb(k), klev, arg%pb(k), arg%qb(k),  &
-                           arg%pq5(k), arg%pq6(k), arg%pq7(k), arg%pq8(k))
-
-         r1=arg%rb(k)
-          arg%pq1(k) = (1.-r1) * arg%pq1(k)
-          arg%pq2(k) = (1.-r1) * arg%pq2(k)
-          arg%pq3(k) = (1.-r1) * arg%pq3(k)
-          arg%pq4(k) = (1.-r1) * arg%pq4(k)
-          arg%pq5(k) =     r1  * arg%pq5(k)
-          arg%pq6(k) =     r1  * arg%pq6(k)
-          arg%pq7(k) =     r1  * arg%pq7(k)
-          arg%pq8(k) =     r1  * arg%pq8(k)
-
-        endif
-       enddo
+            klev = arg%kb(k)
+            CALL int_obs_pq( arg%ib(k), arg%jb(k), klev, arg%pb(k), arg%qb(k),  &
+                             arg%pq1(k), arg%pq2(k), arg%pq3(k), arg%pq4(k))
+            klev = arg%kb(k) + 1
+            CALL int_obs_pq( arg%ib(k), arg%jb(k), klev, arg%pb(k), arg%qb(k),  &
+                             arg%pq5(k), arg%pq6(k), arg%pq7(k), arg%pq8(k))
+            r1=arg%rb(k)
+            arg%pq1(k) = (1.-r1) * arg%pq1(k)
+            arg%pq2(k) = (1.-r1) * arg%pq2(k)
+            arg%pq3(k) = (1.-r1) * arg%pq3(k)
+            arg%pq4(k) = (1.-r1) * arg%pq4(k)
+            arg%pq5(k) =     r1  * arg%pq5(k)
+            arg%pq6(k) =     r1  * arg%pq6(k)
+            arg%pq7(k) =     r1  * arg%pq7(k)
+            arg%pq8(k) =     r1  * arg%pq8(k)
+         ELSE
+            arg%pq1(k) = 0.0_r8
+            arg%pq2(k) = 0.0_r8
+            arg%pq3(k) = 0.0_r8
+            arg%pq4(k) = 0.0_r8
+            arg%pq5(k) = 0.0_r8
+            arg%pq6(k) = 0.0_r8
+            arg%pq7(k) = 0.0_r8
+            arg%pq8(k) = 0.0_r8
+         ENDIF
+      ENDDO
 
 ! ---
 ! Count good observations
-    arg%nc = 0
-  do k=1,arg%no
-   if(arg%flc(k).eq.1)then
-    arg%nc = arg%nc + 1
-   endif
-  enddo
+      arg%nc = 0
+      DO k = 1,arg%no
+         IF ( arg%flc(k) .EQ. 1 ) THEN
+            arg%nc = arg%nc + 1
+         ENDIF
+      ENDDO
 
-  arg%inc(:) = 0.0
+      WRITE (drv%dia,*) 'Number of good ARGO observations after parametr interpolation: ',  arg%nc
 
- endif
+      arg%inc(:) = 0.0_r8
 
-end subroutine int_par_arg
+   ENDIF
+
+END SUBROUTINE int_par_arg
