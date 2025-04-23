@@ -9,6 +9,11 @@
 
 **OceanVar2** decomposes the background error covariance matrix into physically based linear operators, allowing for individual analysis of specific error components. A key feature of **OceanVar2** is its ability to represent error correlations between temperature, salinity, and sea level anomalies (the sea level operator). OceanVar2 offers the flexibility of using either a dynamic height or a barotropic model for closed domains, or EOF-based correlations. Horizontal error correlations are modeled with a diffusive operator, replacing the previous recursive filter. Furthermore, the **OceanVar2** code has been extensively revised into a unified, consistent, and fully parallelized framework, integrating past developments.
 ##
+<p align="center">
+<br>
+<img src='./doc/figura1_web.png'>
+<br>
+</p>
 
 # [user guide](https://github.com/CMCC-Foundation/OceanVar2/blob/main/doc/OceanVar_User_Manual.pdf)
 PDF User guide can be downloaded [here](https://github.com/CMCC-Foundation/OceanVar2/blob/main/doc/OceanVar_User_Manual.pdf).
