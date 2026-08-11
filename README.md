@@ -26,6 +26,8 @@ To help users become familiar with the code, a test-case is also provided [here]
 
 ## References using OceanVar:
 
+- **2026**:
+  * [Oddo, P., Adani, M., Carere, F., Cipollone, A., Goglio, A. C., Jansen, E., Aydogdu, A., Mele, F., Epicoco, I., Pistoia, J., Clementi, E., Pinardi, N., and Masina, S.: Implementation and evaluation of sea level operators in OceanVar2.0: an open-source oceanographic three-dimensional variational data assimilation system, Geosci. Model Dev., 19, 423–445.](https://gmd.copernicus.org/articles/19/423/2026/)
 - **2023**:
   * [Clementi, E., Drudi, M.,    Aydogdu, A., Moulin, A., Grandi, A., Mariani, A., Goglio, A. C.,    Pistoia, J., Miraglio, P., Lecci, R., Palermo, F., Coppini, G.,    Masina, S., & Pinardi, N. (2023). Mediterranean Sea Physical Analysis    and Forecast (CMS MED-Physics, EAS8 system) (Version 1) [Data set]. Copernicus Marine Service (CMS).](https://doi.org/10.25423/CMCC/MEDSEA_ANALYSISFORECAST_PHY_006_013_EAS8)
   * [Coppini, G., Clementi, E.,    Cossarini, G., Salon, S., Korres, G., Ravdas, M., Lecci, R., Pistoia,    J., Goglio, A. C., Drudi, M., et al.: The Mediterranean forecasting    system. Part I: evolution and performance, EGUsphere, pp. 1–50, 2023.](https://os.copernicus.org/articles/19/1483/2023/)
